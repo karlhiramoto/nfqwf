@@ -16,3 +16,13 @@ libtool
 filter_test1
 missing
 Makefile
+depcomp
+doc/
+ltmain.sh
+m4/libtool.m4
+m4/ltoptions.m4
+m4/ltsugar.m4
+m4/ltversion.m4
+m4/lt~obsolete.m4
+nfq-proxy-config.h
+
