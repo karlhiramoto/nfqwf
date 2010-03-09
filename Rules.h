@@ -71,15 +71,10 @@ to Rules that point to those objects
 */
 struct Content_Filter
 {
-	/* counter to number of holders of pointers to this object
-		each connetion will have a reference to it.
-		When config is reloaded a new Rule list will be generated,
-		the old Rule list will be deleted when refcount == 0.
-	*/
-	int refcount;
+	OBJECT_COMMON
 	unsigned int Rule_list_count;
 	struct Rule **Rule_list;
-	struct FilterList *object_list;
+	struct FilterList *Object_list;
 };
 
 #endif

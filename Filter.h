@@ -8,6 +8,13 @@
 OBJECT_COMMON \
 struct Filter_ops *fo_ops; \
 
+/**
+* @ingroup Object
+* @defgroup FilterObject Filter Object
+* @{
+*/
+
+
 
 struct Filter
 {
@@ -20,7 +27,7 @@ struct HttpReq;
 struct Filter_ops
 {
 	/* parents ops */
-	struct object_ops *ops;
+	struct Object_ops *ops;
 	
 	/**
 	* Optional callback(virtual method) to init/allocate any private data
@@ -44,8 +51,12 @@ struct Filter_ops
 	*/
 	int (*foo_request_start)(struct Filter *obj, struct HttpReq *);
 	
-	/** Check rule verdict against rule.
+	/** @brief Check rule verdict against rule.
 	    This is called when request comes back from server.
+	    @param obj   This filter object
+	    @param HttpReq Http Request we are going to filter
+	    @param rule    Rule to check
+	    @returns  filter verict
 	*/
 	int (*foo_request_verdict)(struct Filter *obj, struct HttpReq *, struct rule *);
 
@@ -60,7 +71,10 @@ struct Filter_ops
 	int (*foo_print)(struct Filter *);
 };
 
-
+/**
+* @name Reference Management
+* @{
+*/
 struct Filter *Filter_alloc(struct Filter_ops *ops);
 
 void Filter_free(struct Filter *obj);
@@ -68,7 +82,21 @@ void Filter_free(struct Filter *obj);
 void Filter_get(struct Filter *obj);
 void Filter_put(struct Filter *obj);
 
-int Filter_shared(struct Filter *obj);
+/**
+* Check whether this object is used by multiple users
+* @arg obj		object to check
+* @return true or false
+*/
+bool Filter_shared(struct Filter *obj);
+
+/** @}
+end of refrence management
+*/
+
+
+/** @}
+end of Object file
+*/
 
 #endif /* FILTER_OBJECT_H */
 

@@ -1,6 +1,10 @@
 #ifndef FILTERS_H
 #define FILTERS_H
 
+#ifdef HAVE_CONFIG_H
+#include "nfq-proxy-config.h"
+#endif
+
 struct Filter_ops;
 struct Filter;
 

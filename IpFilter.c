@@ -1,4 +1,9 @@
 #include <stdlib.h>
+
+#ifdef HAVE_CONFIG_H
+#include "nfq-proxy-config.h"
+#endif
+
 #include "Filter.h"
 #include "FilterType.h"
 #include "IpFilter.h"
@@ -23,7 +28,7 @@ int IpFilter_load_from_xml(struct Filter *fobj, const char *xml)
 	return 0;
 }
 
-struct object_ops obj_ops = {
+struct Object_ops obj_ops = {
 	.obj_name           = "filter/ip",
 	.obj_size           = sizeof(struct IpFilter),
 };

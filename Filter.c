@@ -12,7 +12,7 @@ static struct Filter_ops *get_fobj_ops(struct Filter *fobj)
 }
 
 #if 0
-static struct object_ops *get_obj_ops(struct Filter *fobj)
+static struct Object_ops *get_obj_ops(struct Filter *fobj)
 {
 
 	if (!fobj->obj_ops)
@@ -30,12 +30,12 @@ static struct object_ops *get_obj_ops(struct Filter *fobj)
 struct Filter *Filter_alloc(struct Filter_ops *fo_ops)
 {
 	struct Filter *new_filter;
-	struct object_ops *obj_ops = fo_ops->ops;
+	struct Object_ops *obj_ops = fo_ops->ops;
 
 	if (obj_ops->obj_size < sizeof(*new_filter))
 		BUG();
 
-	new_filter = (struct Filter *) object_alloc(obj_ops);
+	new_filter = (struct Filter *) Object_alloc(obj_ops);
 	if (!new_filter)
 		return NULL;
 
@@ -63,7 +63,7 @@ void Filter_free(struct Filter *obj)
 		fops->foo_destructor(obj);
 
 	/* call parents destructor */
-	object_free((struct object*)obj);
+	Object_free((struct Object*)obj);
 	
 	DBG(4, "Freed filter object %p\n", obj);
 }
@@ -104,12 +104,8 @@ void Filter_put(struct Filter *obj)
 		Filter_free(obj);
 }
 
-/**
-* Check whether this object is used by multiple users
-* @arg obj		object to check
-* @return true or false
-*/
-int Filter_shared(struct Filter *obj)
+
+bool Filter_shared(struct Filter *obj)
 {
 	return obj->refcount > 1;
 }

@@ -1,11 +1,16 @@
 #include <stdlib.h>
+
+#ifdef HAVE_CONFIG_H
+#include "nfq-proxy-config.h"
+#endif
+
 #include "Object.h"
 #include "nfq_proxy_private.h"
 
-/// Object ID sequence
+/// Object ID sequence.  NOTE  object allocation for now only done by one thread so no mutex needed yet. 
 static unsigned int id_seq = 0;
 
-static struct object_ops *fobj_ops(struct object *obj)
+static struct Object_ops *fobj_ops(struct Object *obj)
 {
 	if (!obj->obj_ops)
 		BUG();
@@ -18,11 +23,11 @@ static struct object_ops *fobj_ops(struct object *obj)
 * @arg ops		operations handle
 * @return The new object or NULL
 */
-struct object *object_alloc(struct object_ops *ops)
+struct Object *Object_alloc(struct Object_ops *ops)
 {
-	struct object *new_obj;
+	struct Object *new_obj;
 	
-	if (ops->obj_size < sizeof(struct object))
+	if (ops->obj_size < sizeof(struct Object))
 		BUG();
 	
 	new_obj = calloc(1, ops->obj_size);
@@ -43,18 +48,18 @@ struct object *object_alloc(struct object_ops *ops)
 }
 
 
-void object_free(struct object *obj)
+void Object_free(struct Object *obj)
 {
-	struct object_ops *ops = fobj_ops(obj);
-	
+	struct Object_ops *ops = fobj_ops(obj);
+
 	if (obj->refcount > 0)
 		DBG(1, "Warning: Freeing object in use...\n");
-	
+
 	if (ops->obj_destructor)
 		ops->obj_destructor(obj);
-	
+
 	free(obj);
-	
+
 	DBG(4, "Freed object %p\n", obj);
 }
 
@@ -67,7 +72,7 @@ void object_free(struct object *obj)
 * Acquire a reference on a object
 * @arg obj  	object to acquire reference from
 */
-void object_get(struct object *obj)
+void Object_get(struct Object *obj)
 {
 	obj->refcount++;
 	DBG(4, "New reference to object %p, total refcount %d\n",
@@ -78,7 +83,7 @@ void object_get(struct object *obj)
 * Release a reference from an object
 * @arg obj		object to release reference from
 */
-void object_put(struct object *obj)
+void Object_put(struct Object *obj)
 {
 	if (!obj)
 		return;
@@ -91,7 +96,7 @@ void object_put(struct object *obj)
 			BUG();
 		
 		if (obj->refcount <= 0)
-			object_free(obj);
+			Object_free(obj);
 }
 
 /**
@@ -99,7 +104,7 @@ void object_put(struct object *obj)
 * @arg obj		object to check
 * @return true or false
 */
-int object_shared(struct object *obj)
+bool Object_shared(struct Object *obj)
 {
 	return obj->refcount > 1;
 }
