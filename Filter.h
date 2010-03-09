@@ -1,0 +1,74 @@
+#ifndef FILTER_OBJECT_H
+#define FILTER_OBJECT_H
+
+#include "nfq_proxy_private.h"
+#include "Object.h" // generic object
+
+#define FILTER_OBJECT_COMMON \
+OBJECT_COMMON \
+struct Filter_ops *fo_ops; \
+
+
+struct Filter
+{
+	FILTER_OBJECT_COMMON
+};
+
+struct rule;
+struct HttpReq;
+
+struct Filter_ops
+{
+	/* parents ops */
+	struct object_ops *ops;
+	
+	/**
+	* Optional callback(virtual method) to init/allocate any private data
+	*/
+	int (*foo_constructor)(struct Filter *);
+
+	/**
+	* Optional callback(virtual method) to free any private data
+	*/
+	int (*foo_destructor)(struct Filter *);
+
+	/*optional callback to clone private data */
+	int (*foo_clone)(struct Filter *dst, struct Filter *src);
+
+	/*optional callback to compare two filters */
+	int (*foo_compare)(struct Filter *dst, struct Filter *src);
+
+	/** Used to preload or start any async operation
+	This is called when request comes from the client
+	NOTE the filter object will be responsible for maintaining its own request table
+	*/
+	int (*foo_request_start)(struct Filter *obj, struct HttpReq *);
+	
+	/** Check rule verdict against rule.
+	    This is called when request comes back from server.
+	*/
+	int (*foo_request_verdict)(struct Filter *obj, struct HttpReq *, struct rule *);
+
+
+	// FIXME some kind of filter for AV
+	int (*foo_file_filter)(struct Filter *obj, struct HttpReq *, int *fd);
+	
+	/* to load xml.. TODO use libxml2 type */
+	int (*foo_load_from_xml)(struct Filter *, const char *xml);
+	
+	/*for debug */
+	int (*foo_print)(struct Filter *);
+};
+
+
+struct Filter *Filter_alloc(struct Filter_ops *ops);
+
+void Filter_free(struct Filter *obj);
+
+void Filter_get(struct Filter *obj);
+void Filter_put(struct Filter *obj);
+
+int Filter_shared(struct Filter *obj);
+
+#endif /* FILTER_OBJECT_H */
+
