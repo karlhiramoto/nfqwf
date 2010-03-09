@@ -23,6 +23,7 @@ DX_PS_FEATURE(OFF)
 
 DX_INIT_DOXYGEN([$PACKAGE_NAME],[Doxyfile])
 
+
 ######################################################################
 
 AC_CONFIG_HEADERS([nfq-proxy-config.h])
@@ -34,10 +35,8 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([string])
 
 
-
 AC_CONFIG_FILES([Makefile
   ])
 
 
 AC_OUTPUT
-

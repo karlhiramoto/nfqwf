@@ -1,0 +1,5 @@
+to compile:
+
+autoreconf -i
+./configure
+make
