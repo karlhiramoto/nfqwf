@@ -1,6 +1,11 @@
 #ifndef FILTER_OBJECT_H
 #define FILTER_OBJECT_H
 
+#ifdef HAVE_CONFIG_H
+#include "nfq-proxy-config.h"
+#endif
+
+
 #include "nfq_proxy_private.h"
 #include "Object.h" // generic object
 
@@ -77,14 +82,14 @@ struct Filter_ops
 */
 struct Filter *Filter_alloc(struct Filter_ops *ops);
 
-void Filter_free(struct Filter *obj);
+void Filter_free(struct Filter **obj);
 
 void Filter_get(struct Filter *obj);
-void Filter_put(struct Filter *obj);
+void Filter_put(struct Filter **obj);
 
 /**
 * Check whether this object is used by multiple users
-* @arg obj		object to check
+* @param obj  object to check
 * @return true or false
 */
 bool Filter_shared(struct Filter *obj);
@@ -93,6 +98,12 @@ bool Filter_shared(struct Filter *obj);
 end of refrence management
 */
 
+/**
+* Load filter object from XML config
+* @param obj  Filter object
+* @param xml  xml config   FIXME change xml to use libxml2
+*/
+int Filter_fromXml(struct Filter *obj, const char *xml);
 
 /** @}
 end of Object file

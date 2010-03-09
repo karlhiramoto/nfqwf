@@ -1,4 +1,11 @@
-#include <stdlib.h> 
+#include <stdlib.h>
+#include <errno.h>
+
+#ifdef HAVE_CONFIG_H
+#include "nfq-proxy-config.h"
+#endif
+
+
 #include "Filter.h"
 #include "nfq_proxy_private.h"
 
@@ -51,21 +58,28 @@ struct Filter *Filter_alloc(struct Filter_ops *fo_ops)
 }
 
 
-void Filter_free(struct Filter *obj)
+void Filter_free(struct Filter **obj_in)
 {
-	struct Filter_ops *fops = get_fobj_ops(obj);
+	struct Filter *obj; /* just used to de-reference input arg */
+	struct Filter_ops *fops;
+	if (!obj_in || !*obj_in)
+		return;
+
+	obj = *obj_in;
+	fops = get_fobj_ops(obj);
+	
 	
 	if (obj->refcount > 0)
-		DBG(1, "Warning: Freeing object in use...\n");
+		DBG(1, "Warning: Freeing object in use... refcount=%d\n", obj->refcount);
 
 	/* Call this objects desctructor */
 	if (fops->foo_destructor)
 		fops->foo_destructor(obj);
 
-	/* call parents destructor */
-	Object_free((struct Object*)obj);
-	
 	DBG(4, "Freed filter object %p\n", obj);
+	
+	/* call parents destructor */
+	Object_free((struct Object**)obj_in);
 }
 
 /**
@@ -88,11 +102,15 @@ void Filter_get(struct Filter *obj)
 * Release a reference from an object
 * @arg obj		object to release reference from
 */
-void Filter_put(struct Filter *obj)
+void Filter_put(struct Filter **obj_in)
 {
-	if (!obj)
+	struct Filter *obj;
+
+	if (!obj_in || !*obj_in)
 		return;
-	
+
+ 	obj = *obj_in;
+
 	obj->refcount--;
 	DBG(4, "Returned object reference %p, %d remaining\n",
 		obj, obj->refcount);
@@ -101,11 +119,24 @@ void Filter_put(struct Filter *obj)
 		BUG();
 
 	if (obj->refcount <= 0)
-		Filter_free(obj);
+ 		Filter_free(obj_in);
 }
 
 
 bool Filter_shared(struct Filter *obj)
 {
 	return obj->refcount > 1;
+}
+
+int Filter_fromXml(struct Filter *fo, const char *xml)
+{
+	struct Filter_ops *ops = get_fobj_ops(fo);
+	
+	if (!ops->foo_load_from_xml) {
+		DBG(1, "Invalid object does not have load XML operation\n");
+		return -EINVAL;
+	}
+	DBG(5, "Calling load XML operation\n");
+	
+	return ops->foo_load_from_xml(fo, xml);
 }
