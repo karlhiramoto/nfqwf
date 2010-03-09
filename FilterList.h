@@ -6,6 +6,11 @@ struct FilterList;
 
 struct FilterList*  FilterList_new(void);
 
-struct FilterList* FilterList_add_tail(struct FilterList *fl, struct Filter *fo);
+void FilterList_free(struct FilterList **fl);
+
+struct FilterList* FilterList_addTail(struct FilterList *fl, struct Filter *fo);
+
+struct Filter* FilterList_searchObjId(struct FilterList *fl, int id);
+
 
 #endif
