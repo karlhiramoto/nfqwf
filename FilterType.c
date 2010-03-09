@@ -63,9 +63,11 @@ struct Filter *FilterType_get_new(const char *name)
    struct Filter_ops *fo_ops = NULL;
    
    fo_ops = FilterType_list_search(name);
-   if (!fo_ops)
+   if (!fo_ops) {
 	   ERROR("No filter object of type '%s' found\n", name);
-   
+	   return NULL;
+   }
+ 
    fo = Filter_alloc(fo_ops);
 
    DBG(5, "new filter = %p id=%d\n", fo, fo->id);

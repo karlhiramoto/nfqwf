@@ -1,16 +1,29 @@
 #ifndef RULES_H
 #define RULES_H 1
 
+#ifdef HAVE_CONFIG_H
+#include "nfq-proxy-config.h"
+#endif
+
 #include <stdbool.h>
 #include <linux/in.h>
 #include "Filter.h"
+
+
+/**
+* @defgroup Rules Rule definitions
+* @{
+*/
+
 
 enum Rule_action{
 	Rule_reject = 0,
 	Rule_accept = 1,
 	
-	/* Trust:  will trust the connection, so subsequent requests and packets will not be checked */
-	always_trust = 2,
+	/** Trust:  will trust the connection, so subsequent requests and packets will not be checked */
+	Rule_alwaysTrust = 2,
+
+	Rule_continue = 3,  /** Rule matches but continue rule list */
 };
 
 #define MAX_OBJ_NAME 12
@@ -42,9 +55,9 @@ struct {
 #define MAX_FITERS_PER_RULE 16
 #define MAX_FITERS_TYPES 4
 struct Rule {
-	int id;
-	bool disabled;
-	bool log;
+	int id;        /** Rule ID */
+	bool disabled; /** Is rule disabled */
+	bool log;      /** Log this rule if it matches */
 	bool notify;
 	enum Rule_action action;
 
@@ -65,16 +78,9 @@ struct Rule {
 
 };
 
-/* perhaps a better name for this struct
-* We are relating all of the configured objercts we have,
-to Rules that point to those objects
+
+/** @}
+end of file
 */
-struct Content_Filter
-{
-	OBJECT_COMMON
-	unsigned int Rule_list_count;
-	struct Rule **Rule_list;
-	struct FilterList *Object_list;
-};
 
 #endif

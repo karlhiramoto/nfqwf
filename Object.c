@@ -10,7 +10,7 @@
 /// Object ID sequence.  NOTE  object allocation for now only done by one thread so no mutex needed yet. 
 static unsigned int id_seq = 0;
 
-static struct Object_ops *fobj_ops(struct Object *obj)
+static struct Object_ops *get_obj_ops(struct Object *obj)
 {
 	if (!obj->obj_ops)
 		BUG();
@@ -48,19 +48,20 @@ struct Object *Object_alloc(struct Object_ops *ops)
 }
 
 
-void Object_free(struct Object *obj)
+void Object_free(struct Object **obj)
 {
-	struct Object_ops *ops = fobj_ops(obj);
+	struct Object_ops *ops = get_obj_ops(*obj);
 
-	if (obj->refcount > 0)
+	if ((*obj)->refcount > 0)
 		DBG(1, "Warning: Freeing object in use...\n");
 
 	if (ops->obj_destructor)
-		ops->obj_destructor(obj);
+		ops->obj_destructor(*obj);
 
-	free(obj);
+	DBG(4, "Free object %p\n", *obj);
 
-	DBG(4, "Freed object %p\n", obj);
+	free(*obj);
+	*obj = NULL;
 }
 
 /**
@@ -83,10 +84,13 @@ void Object_get(struct Object *obj)
 * Release a reference from an object
 * @arg obj		object to release reference from
 */
-void Object_put(struct Object *obj)
+void Object_put(struct Object **obj_arg)
 {
-	if (!obj)
+	struct Object *obj;
+	if (!*obj_arg)
 		return;
+	
+	obj = *obj_arg; // derefernce only once
 	
 	obj->refcount--;
 	DBG(4, "Returned object reference %p, %d remaining\n",
@@ -96,7 +100,7 @@ void Object_put(struct Object *obj)
 			BUG();
 		
 		if (obj->refcount <= 0)
-			Object_free(obj);
+			Object_free(obj_arg);
 }
 
 /**

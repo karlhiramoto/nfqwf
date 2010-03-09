@@ -66,7 +66,7 @@ struct HttpReq {
 };
 
 typedef ubi_dlList HttpReq_list_t;
-struct Content_Filter;
+struct ContentFilter;
 
 struct HttpConn {
 	ubi_dlNode node;	/** ubiqx "internal" data */
@@ -79,7 +79,7 @@ struct HttpConn {
 	uint32_t client_ack_num;
 
 	/// Contains pointer with reference to content filter and its rules
-	struct Content_Filter *c_filter;  
+// 	struct ContentFilter *c_filter;  
 	
 	/** linked list of HttpReq.  HTTP 1.1 persistent connections have multiple reqs per con.
 	After request has been received by client we may remove from list.

@@ -64,7 +64,7 @@ struct Object_ops
 
 struct Object *Object_alloc(struct Object_ops *ops);
 
-void Object_free(struct Object *obj);
+void Object_free(struct Object **obj);
 
 /**
 * @name Reference Management
@@ -72,17 +72,17 @@ void Object_free(struct Object *obj);
 */
 
 /**
+* Release a reference from an object.
+* When reference count reaches 0 free and will NULL pointer
+* @arg obj	object to release reference from
+*/
+void Object_put(struct Object **obj);
+
+/**
 * Acquire a reference on a object
 * @arg obj  	object to acquire reference from
 */
 void Object_get(struct Object *obj);
-
-
-/**
-* Release a reference from an object
-* @arg obj		object to release reference from
-*/
-void Object_put(struct Object *obj);
 
 /**
 * Check whether this object is used by multiple users
