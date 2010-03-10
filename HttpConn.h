@@ -11,7 +11,6 @@
 * @{
 */
 
-typedef ubi_dlList HttpReq_list_t;
 struct ContentFilter;
 
 struct HttpConn {

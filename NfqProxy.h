@@ -4,31 +4,28 @@
 // #include <pthread.h>
 
 
-/**
-* @defgroup Proxy NFQ Proxy.  Thread that operates on a single NF_QUEUE
-* @brief We will handle all of the packets at arrive on this queue.
-* @{
-*/
 
- 
 #include "HttpReq.h"
+#include "HttpConn.h"
 
-struct NfqProxy {
-	int q_id; /* NF_QUEUE ID*/
-	struct ProxyConfig *config;
-	HttpConn_list_t *con_list;
-};
+// struct NfqProxy {
+// 	int q_id; /* NF_QUEUE ID*/
+// 	struct ProxyConfig *config;
+// 	HttpConn_list_t *con_list;
+// };
+struct ProxyConfig;
+struct NfqProxy;
 
-struct NfqProxy *NfqProxy_new(int q_id, struct ProxyConfig *config);
+void NfqProxy_put(struct NfqProxy **nfq_proxy);
+
+struct NfqProxy* NfqProxy_new(int q_id, struct ProxyConfig *config);
 
 int NfqProxy_updateConfig(struct NfqProxy *nfqp, struct ProxyConfig *config);
 
-/** Thread main loop
-* @arg  Proxy object
-* @return thread ID, or -errno
-*/
-int *NfqProxy_run(void *NfqProxy);
+int NfqProxy_start(struct NfqProxy* nfq_proxy);
 
-int *NfqProxy_stop(void *NfqProxy);
+int NfqProxy_stop(struct NfqProxy* nfq_proxy);
+
+int NfqProxy_join(struct NfqProxy* nfq_proxy);
 
 #endif

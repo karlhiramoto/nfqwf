@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "Object.h"
 
 /**
 * @ingroup Object
@@ -15,17 +16,23 @@
 * @{
 */
 
-struct ProxyConfig
-{
-	OBJECT_COMMON
+struct ProxyConfig;
 
-	/** We will use the queue range from low to high.
-	See "man iptables" --queue-balance */
-	uint16_t low_queue_id;
-	uint16_t high_queue_id;
-	
-	struct ContentFilter *cf; /* content filter object */
-};
+void ProxyConfig_get(struct ProxyConfig *conf);
+
+void ProxyConfig_put(struct ProxyConfig **conf);
+
+struct ProxyConfig* ProxyConfig_new(void);
+
+int ProxyConfig_loadConfig(struct ProxyConfig* conf, const char *xml);
+
+uint16_t ProxyConfig_getHighQNum(struct ProxyConfig* conf);
+
+uint16_t ProxyConfig_getLowQNum(struct ProxyConfig* conf);
+
+void ProxyConfig_setHighQNum(struct ProxyConfig* conf, uint16_t num);
+
+void ProxyConfig_setLowQNum(struct ProxyConfig* conf, uint16_t num);
 
 /** @} */
 #endif
