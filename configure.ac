@@ -30,7 +30,7 @@ DX_PDF_FEATURE(ON)
 AC_CONFIG_HEADERS([nfq-proxy-config.h])
 
 
-CFLAGS="${CFLAGS} -Wall -Werror -g3 "
+CFLAGS="${CFLAGS} -Os -Wall -Werror -g3 "
 
 AC_LANG([C])
 # Checks for header files.
