@@ -65,25 +65,6 @@ static struct Filter_ops IpFilter_obj_ops = {
 };
 
 
-/**
-* @name Allocation/Freeing
-* @{
-*/
-
-struct IpFilter *IpFilter_alloc(void)
-{
-	return (struct IpFilter *) Filter_alloc(&IpFilter_obj_ops);
-}
-
-void IpFilter_get(struct IpFilter *obj)
-{
-	Filter_get((struct Filter *) obj);
-}
-
-void IpFilter_put(struct IpFilter **obj)
-{
-	Filter_put((struct Filter **) obj);
-}
 
 static void __init IpFilter_init(void)
 {
@@ -95,3 +76,4 @@ static void __init IpFilter_init(void)
 /** @}
 end of Object file
 */
+
