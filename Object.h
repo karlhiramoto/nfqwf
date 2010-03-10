@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 /**
-* @defgroup Object Object
+* @defgroup Object Object.  A Generic object that others may inherit.
 * @{
 */
 

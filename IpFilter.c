@@ -58,7 +58,7 @@ static struct Object_ops obj_ops = {
 };
 
 static struct Filter_ops IpFilter_obj_ops = {
-	.ops            = &obj_ops,
+	.ops                = &obj_ops,
 	.foo_constructor	= IpFilter_constructor,
 	.foo_clone          = IpFilter_clone,
 	.foo_load_from_xml  = IpFilter_load_from_xml,

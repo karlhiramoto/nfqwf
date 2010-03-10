@@ -8,6 +8,7 @@ config.status
 config.sub
 configure
 *.o
+*.log
 *.in
 *.kde*
 .deps
@@ -25,4 +26,5 @@ m4/ltsugar.m4
 m4/ltversion.m4
 m4/lt~obsolete.m4
 nfq-proxy-config.h
+stamp-h1
 

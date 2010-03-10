@@ -16,14 +16,17 @@
 */
 
 
-enum Rule_action{
-	Rule_reject = 0,
-	Rule_accept = 1,
-	
+enum Rule_action {
+	Rule_invalid = 0,  /** not checked yet,  0 so calloc() or memset(0) will init */
+	Rule_reject,
+	Rule_accept,
+	Rule_virus,
+	Rule_malware,
+	Rule_phishing,
 	/** Trust:  will trust the connection, so subsequent requests and packets will not be checked */
-	Rule_alwaysTrust = 2,
+	Rule_alwaysTrust,
 
-	Rule_continue = 3,  /** Rule matches but continue rule list */
+	Rule_continue,  /** Rule matches but continue rule list */
 };
 
 #define MAX_OBJ_NAME 12
@@ -51,22 +54,24 @@ struct {
 } when_obj;
 #endif
 
-/** Rule definition. */
+
 #define MAX_FITERS_PER_RULE 16
 #define MAX_FITERS_TYPES 4
+/** Rule definition. */
 struct Rule {
 	int id;        /** Rule ID */
 	bool disabled; /** Is rule disabled */
 	bool log;      /** Log this rule if it matches */
-	bool notify;
-	enum Rule_action action;
+	bool notify;   /** Email Notify */
+	enum Rule_action action;  /** Action this rule should take */
 
 	/// Note possible new way to do fitlers. 
 	/** Filter object may be of any objects
 	like IP, Network, host, domain, category, etc
 	A logical AND is operated on each filter type */
 
-	// 2D array.  within each group logical OR. Betwen groups logical AND
+	/** 2D array.  within each group logical OR. Betwen groups logical AND.
+	  See  @link FilterList */
 	struct FilterList **filter_groups[MAX_FITERS_TYPES];
 
 	/// Do it oldSkool

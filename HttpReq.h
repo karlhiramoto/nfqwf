@@ -4,6 +4,13 @@
 #include <linux/in.h>
 #include <stdbool.h>
 #include <ubiqx/ubi_dLinkList.h>
+#include "Ipv4Tcp.h"
+
+/**
+* @ingroup HttpConn
+* @defgroup HttpReq Http Request
+* @{
+*/
 
 enum http_method { http_method_options, /* RFC 2616   sect 9.2 */
 		http_method_get,         /* RFC 2616   sect 9.3 */
@@ -14,24 +21,6 @@ enum http_method { http_method_options, /* RFC 2616   sect 9.2 */
 		http_method_trace,
 		http_method_connect };
 
-struct ipv4_tcp_tuple {
-	in_addr_t src_ip;
-	in_addr_t dst_ip;
-	in_port_t src_port; // 16 bit port
-	in_port_t dst_port;
-};
-
-struct ipv4_tcp_pkt_node {
-	ubi_dlNode node;	/** ubiqx "internal" data */
-	struct ipv4_tcp_tuple tuple;
-	uint16_t checksum;
-	uint32_t seq_num;
-	uint32_t ack_num;
-	uint16_t packet_length; /// Length of IP packet
-	uint16_t payload_length; /// Length of TCP payload
-	void *data; /// pointer to raw IP packet data
-	void *payload; /// pointer within data to TCP payload
-};
 
 typedef ubi_dlList ipv4_tcp_pkt_list_t;
 
@@ -47,6 +36,7 @@ struct HttpReq {
 	enum http_method method;
 	char *host;
 	char *path;
+	char *url; /** combine host and path, without http://  so will be host/path */
 	uint64_t content_length;  // expected length of data from server. 
 	uint64_t read_content; // what we have already recieved
 	ipv4_tcp_pkt_list_t *request_buffer; // Linked list of request data HTTP headers,  needed incase we have fragments of a single header.
@@ -60,37 +50,22 @@ struct HttpReq {
 	bool phishing;
 	bool malware;
 	int category_id[HTTP_REQ_MAX_CATEGORY_IDS];
-	///
+
+
 	
+	/// Private data that a filter object may request, will allow different filter objects to share data.
+	/// For example a categoryFetchObject to share with a categoryMatchObject
 	struct HttpReq_priv_data **priv_data;
 };
 
 typedef ubi_dlList HttpReq_list_t;
 struct ContentFilter;
 
-struct HttpConn {
-	ubi_dlNode node;	/** ubiqx "internal" data */
-	uint8_t  tcp_state;
-	int request_count;  // how many requests have been sent
-	struct ipv4_tcp_tuple tuple;
-	uint32_t server_seq_num;  // note sure if this needed
-	uint32_t server_ack_num;
-	uint32_t client_seq_num;
-	uint32_t client_ack_num;
-
-	/// Contains pointer with reference to content filter and its rules
-// 	struct ContentFilter *c_filter;  
-	
-	/** linked list of HttpReq.  HTTP 1.1 persistent connections have multiple reqs per con.
-	After request has been received by client we may remove from list.
-	*/
-	HttpReq_list_t *request_list;
-	
-};
-
-typedef ubi_dlList HttpConn_list_t;
-
 struct HttpReq * HttpReq_new(struct HttpConn*);
-void * HttpReq_new_priv_data_ptr(struct HttpReq *req, int key, void (*free_fn)(void *));
+void * HttpReq_newPrivateDataPtr(struct HttpReq *req, int key, void (*free_fn)(void *));
+void * HttpReq_getPrivateDataPtr(struct HttpReq *req, int key);
+int HttpReq_freePrivateDataPtr(struct HttpReq *req, int key);
+
+/** @}  */
 
 #endif

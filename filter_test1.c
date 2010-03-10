@@ -1,5 +1,4 @@
 #include "HttpReq.h"
-#include "IpFilter.h"
 #include "ContentFilter.h"
 
 int main(int argc, char *argv[])

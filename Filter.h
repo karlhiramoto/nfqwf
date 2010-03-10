@@ -33,6 +33,14 @@ struct Filter_ops
 {
 	/* parents ops */
 	struct Object_ops *ops;
+
+	/**
+	  Optional size of private data that will be assiged per HTTP request.
+	  This can be used to store state.
+	  This is the inital size of the pointer passed in, the fillter object
+	  may relloc() if it wishes. 
+	*/
+	int private_req_data_size;
 	
 	/**
 	* Optional callback(virtual method) to init/allocate any private data
@@ -54,16 +62,17 @@ struct Filter_ops
 	This is called when request comes from the client
 	NOTE the filter object will be responsible for maintaining its own request table
 	*/
-	int (*foo_request_start)(struct Filter *obj, struct HttpReq *);
+	int (*foo_request_start)(struct Filter *obj, struct HttpReq *, void *priv_req_data);
 	
-	/** @brief Check rule verdict against rule.
+	/** @brief Check if filter object matches request
 	    This is called when request comes back from server.
 	    @param obj   This filter object
 	    @param HttpReq Http Request we are going to filter
-	    @param rule    Rule to check
-	    @returns  filter verict
+	    @param priv_req_data double pointer to data private
+	    to this filter object and unique to this http request
+	    @returns 1 on match, 0 no match, or -errno
 	*/
-	int (*foo_request_verdict)(struct Filter *obj, struct HttpReq *, struct rule *);
+	int (*foo_matches_req)(struct Filter *obj, struct HttpReq *, void *priv_req_data);
 
 
 	// FIXME some kind of filter for AV
