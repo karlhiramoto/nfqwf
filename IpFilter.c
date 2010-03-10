@@ -65,7 +65,9 @@ static struct Filter_ops IpFilter_obj_ops = {
 };
 
 
-
+/**
+* Initalization function to register this filter type.
+*/
 static void __init IpFilter_init(void)
 {
 	DBG(5, "init ip_filter\n");

@@ -6,6 +6,13 @@
 #include "FilterType.h"
 
 
+/**
+* @ingroup Object
+* @defgroup FilterType FilterType.  A lists of available filter types. 
+* @{
+*/
+
+
 //list of available filters
 static struct Filter_ops **FilterType_list = NULL;
 static unsigned int FilterType_list_count = 0;
@@ -73,4 +80,8 @@ struct Filter *FilterType_get_new(const char *name)
    DBG(5, "new filter = %p id=%d\n", fo, fo->id);
    return fo;
 }
+
+/**
+* @}
+*/
 

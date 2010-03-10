@@ -8,7 +8,7 @@ PROXY_LDLAGS = -pthread
 SUBDIRS = .
 
 OBJECT_SOURCES = Object.c
-FILTER_SOURCES = Filter.c IpFilter.c FilterList.c  FilterType.c ContentFilter.c
+FILTER_SOURCES = Filter.c IpFilter.c DomainFilter.c FilterList.c  FilterType.c ContentFilter.c
 
 noinst_bin_PROGRAMS = filter_test1
 noinst_bindir = $(abs_top_builddir)/tests
