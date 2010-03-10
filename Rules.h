@@ -16,6 +16,9 @@
 */
 
 
+/**
+*  Different actions a rule can take
+*/
 enum Rule_action {
 	Rule_invalid = 0,  /** not checked yet,  0 so calloc() or memset(0) will init */
 	Rule_reject,
@@ -89,3 +92,4 @@ end of file
 */
 
 #endif
+

@@ -23,7 +23,12 @@ struct NfqProxy *NfqProxy_new(int q_id, struct ProxyConfig *config);
 
 int NfqProxy_updateConfig(struct NfqProxy *nfqp, struct ProxyConfig *config);
 
-/** Thread main loop */
-void *NfqProxy_run(void *NfqProxy);
+/** Thread main loop
+* @arg  Proxy object
+* @return thread ID, or -errno
+*/
+int *NfqProxy_run(void *NfqProxy);
+
+int *NfqProxy_stop(void *NfqProxy);
 
 #endif
