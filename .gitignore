@@ -12,6 +12,7 @@ config.log
 config.status
 config.sub
 configure
+core*
 depcomp
 .deps
 doc/
@@ -27,4 +28,5 @@ Makefile
 missing
 nfq-proxy-config.h
 stamp-h1
+vgcore.*
 web_proxy
