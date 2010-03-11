@@ -1,5 +1,7 @@
 #include <stdlib.h>
+#include <pthread.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include <errno.h>
 #include <string.h>
 
@@ -26,6 +28,7 @@ struct NfqProxy
 	OBJECT_COMMON
 	int q_id; /* NF_QUEUE ID*/
 	bool keep_running;
+	pthread_t thread_id;
 	struct ProxyConfig *config;
 	HttpConn_list_t *con_list;
 };
@@ -81,14 +84,33 @@ struct NfqProxy* NfqProxy_new(int q_id, struct ProxyConfig *conf)
 	return NfqProxy_alloc(&obj_ops);
 }
 
+static void* __NfqProxy_main(void *arg)
+{
+	struct NfqProxy* nfq_proxy = arg;
+
+	DBG(5, " thread main startup %p\n", nfq_proxy);
+	while (nfq_proxy->keep_running) {
+		sleep(1);  // FIXME remove when recieving packets.
+		DBG(5, " running thread main loop %p\n", nfq_proxy);
+	}
+
+	return NULL;
+}
+
+
+
 /** Start thread main loop
 * @arg  Proxy object
 * @return thread ID, or -errno
 */
 int NfqProxy_start(struct NfqProxy* nfq_proxy)
 {
+	int ret;
 	nfq_proxy->keep_running = true;
-	return 0;
+
+	ret = pthread_create(&nfq_proxy->thread_id, NULL, __NfqProxy_main, nfq_proxy);
+
+	return ret;
 }
 
 int NfqProxy_stop(struct NfqProxy* nfq_proxy)
@@ -99,7 +121,8 @@ int NfqProxy_stop(struct NfqProxy* nfq_proxy)
 
 int NfqProxy_join(struct NfqProxy* nfq_proxy)
 {
-	return 0;
+	DBG(5, "Join proxy thread %p\n", nfq_proxy);
+	return pthread_join(nfq_proxy->thread_id, NULL);
 }
 
 

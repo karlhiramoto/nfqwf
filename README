@@ -1,5 +1,5 @@
 to compile:
 
-autoreconf -i
+autoreconf -fi
 ./configure
 make

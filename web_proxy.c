@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <errno.h>
-// #include <string.h>
+#include <unistd.h>
 #include <signal.h>
 
 
@@ -14,7 +14,7 @@
 
 /**Current configuration */
 static struct ProxyConfig *conf = NULL;
-
+static bool keep_running = true;
 /** vector of NfqProxy */
 struct NfqProxy **nfq_proxy;
 
@@ -37,6 +37,12 @@ static void sig_HUP_Handler(int sig)
 	}
 }
 
+static void sig_Handler(int sig)
+{
+	DBG(1," sig=%d\n", sig);
+	keep_running = false;
+}
+
 int main(int argc, char *argv[])
 {
 	int ret;
@@ -54,29 +60,45 @@ int main(int argc, char *argv[])
 	/* setup sig handler to reload config */
 	signal(SIGHUP, sig_HUP_Handler);
 
+	signal(SIGTERM, sig_Handler);
+	signal(SIGINT, sig_Handler);
+
 	ret = ProxyConfig_loadConfig(conf, "Xml file");
 
 	num_queues = high_q - low_q;
 	if ( num_queues < 0) {
-		DBG(1," high/low queue out of order");
+		DBG(1," high/low queue out of order\n");
 		BUG();
 	}
 	nfq_proxy = calloc(1, (sizeof(struct NfqProxy *) * ((high_q - low_q) + 1)));
 	for(i = 0; i < num_queues; i++) {
+		DBG(1," start thread %d\n", i);
  		nfq_proxy[i] = NfqProxy_new(i + low_q, conf);
+		NfqProxy_start(nfq_proxy[i]);
 	}
 
+	while(keep_running) {
+		/*SIGTERM or SIGINT will break us out of here */
+		sleep(666); /* sleeping with the devil */
 
+		/*NOTE if we want stats to be reported every X seconds,
+		this is the place to put the code */
+	}
+
+	/* tell threads to stop */
 	for(i = 0; i < num_queues; i++) {
 		NfqProxy_stop(nfq_proxy[i]);
 	}
 
 	for(i = 0; i < num_queues; i++) {
+		DBG(1," Join thread %d\n", i);
 		NfqProxy_join(nfq_proxy[i]);
 		NfqProxy_put(&nfq_proxy[i]);
 	}
 
 	ProxyConfig_put(&conf);
+
+	free(nfq_proxy);
 	return 0;
 }
 
