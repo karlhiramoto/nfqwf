@@ -18,6 +18,8 @@
 /**Current configuration */
 static struct ProxyConfig *conf = NULL;
 static bool keep_running = true;
+static int exit_pipe[2] = { 0, 0};
+
 /** vector of NfqProxy */
 struct NfqProxy **nfq_proxy;
 
@@ -42,8 +44,15 @@ static void sig_HUP_Handler(int sig)
 
 static void sig_Handler(int sig)
 {
+	int ret;
 	DBG(1," sig=%d\n", sig);
 	keep_running = false;
+	ret = write(exit_pipe[1], &sig, sizeof(sig));
+	if (ret < 0) {
+		DBG(1," error writing to exit_pipe[1]=%d\n", exit_pipe[1]);
+	} else if (ret > 0) {
+		DBG(1," wrote %d bytes to exit_pipe[1]=%d\n",ret, exit_pipe[1]);
+	}
 }
 
 struct libnl_cache_ctx {
@@ -114,6 +123,10 @@ int main(int argc, char *argv[])
  		nfq_proxy[i] = NfqProxy_new(i + low_q, conf);
 		NfqProxy_start(nfq_proxy[i]);
 	}
+	ret = pipe(exit_pipe);
+	if (ret) {
+		DBG(1," Error opening pipe %d\n", ret);
+	}
 
 	while(keep_running) {
 		/*SIGTERM or SIGINT will break us out of here */
@@ -123,24 +136,35 @@ int main(int argc, char *argv[])
 		this is the place to put the code */
 
 		fd_set rfds;
-		int fd, retval;
+		int max_fd;
+		int fd;
 
 		FD_ZERO(&rfds);
 
-		fd = nl_socket_get_fd(cache_ctx->rt_sock);
+		max_fd = fd = nl_socket_get_fd(cache_ctx->rt_sock);
 		FD_SET(fd, &rfds);
+		FD_SET(exit_pipe[0], &rfds);
 
+		if (exit_pipe[0] > fd)
+			max_fd = exit_pipe[0];
+		
 		/* wait for an incoming message on the netlink socket */
-		retval = select(fd+1, &rfds, NULL, NULL, NULL);
+		ret = select(fd+1, &rfds, NULL, NULL, NULL);
 
-		if (retval) {
-			if (FD_ISSET(fd, &rfds)) {
-				DBG(1," rt_sock fd %d set\n", fd);
+		if (ret) {
+			if (FD_ISSET(exit_pipe[0], &rfds)) {
+				DBG(1," exit pipe %d set\n", exit_pipe[1]);
+				break;
+			}
+			
+			if (FD_ISSET(max_fd, &rfds)) {
+				DBG(1," rt_sock+1 fd %d set\n", fd);
 				nl_recvmsgs_default(cache_ctx->rt_sock);
 			}
 		}
 	}
 
+	DBG(1," Stopping %d threads\n", num_queues);
 	/* tell threads to stop */
 	for(i = 0; i < num_queues; i++) {
 		NfqProxy_stop(nfq_proxy[i]);

@@ -147,6 +147,7 @@ static void* __NfqProxy_main(void *arg)
 	struct NfqProxy* nfq_proxy = arg;
 	fd_set rfds;
 	int fd, retval;
+	struct timeval timeout = { .tv_sec = 3, .tv_usec = 0}; // OPTIMIZE remove and use otherway to exit select
 
 	DBG(5, " thread main startup %p q=%d\n", nfq_proxy, nfq_proxy->q_id);
 	while (nfq_proxy->keep_running) {
@@ -158,7 +159,7 @@ static void* __NfqProxy_main(void *arg)
 		FD_SET(fd, &rfds);
 
 		/* wait for an incoming message on the netlink socket */
-		retval = select(fd+1, &rfds, NULL, NULL, NULL);
+		retval = select(fd+1, &rfds, NULL, NULL, &timeout);
 
 		if (retval) {
 			if (FD_ISSET(fd, &rfds)) {
