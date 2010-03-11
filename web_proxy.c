@@ -3,6 +3,9 @@
 #include <unistd.h>
 #include <signal.h>
 
+#include <linux/netfilter.h>
+#include <netlink/netfilter/nfnl.h>
+#include <netlink/route/link.h>
 
 #ifdef HAVE_CONFIG_H
 #include "nfq-proxy-config.h"
@@ -43,12 +46,45 @@ static void sig_Handler(int sig)
 	keep_running = false;
 }
 
+struct libnl_cache_ctx {
+	struct nl_sock *rt_sock;
+	struct nl_cache *link_cache;
+};
+
+static struct libnl_cache_ctx * init_libnl_cache(void)
+{
+	struct libnl_cache_ctx *cache_ctx;
+	int err;
+
+	cache_ctx = calloc(1, sizeof(struct libnl_cache_ctx));
+
+	if (!(cache_ctx->rt_sock = nl_socket_alloc()))
+		ERROR_FATAL("Unable to allocate netlink route socket\n");
+
+	if ((err = nl_connect(cache_ctx->rt_sock, NETLINK_ROUTE)) < 0)
+		ERROR_FATAL("Unable to connect netlink socket: %d %s\n",
+			err, nl_geterror(err));
+
+	rtnl_link_alloc_cache(cache_ctx->rt_sock, &cache_ctx->link_cache);
+	nl_cache_mngt_provide(cache_ctx->link_cache);
+
+	return cache_ctx;
+}
+
+void cleanup_libnl_cache(struct libnl_cache_ctx * cache_ctx)
+{
+	nl_cache_mngt_unprovide(cache_ctx->link_cache);
+	nl_cache_free(cache_ctx->link_cache);
+	nl_socket_free(cache_ctx->rt_sock);
+	free(cache_ctx);
+}
 int main(int argc, char *argv[])
 {
 	int ret;
 	int low_q = 1;  // FIXME read this from args
 	int high_q = 2;
 	int num_queues;
+	struct libnl_cache_ctx *cache_ctx = NULL;
 	int i;
 
 	conf = ProxyConfig_new();
@@ -65,6 +101,8 @@ int main(int argc, char *argv[])
 
 	ret = ProxyConfig_loadConfig(conf, "Xml file");
 
+	cache_ctx = init_libnl_cache();
+
 	num_queues = high_q - low_q;
 	if ( num_queues < 0) {
 		DBG(1," high/low queue out of order\n");
@@ -79,10 +117,28 @@ int main(int argc, char *argv[])
 
 	while(keep_running) {
 		/*SIGTERM or SIGINT will break us out of here */
-		sleep(666); /* sleeping with the devil */
+// 		sleep(666); /* sleeping with the devil */
 
 		/*NOTE if we want stats to be reported every X seconds,
 		this is the place to put the code */
+
+		fd_set rfds;
+		int fd, retval;
+
+		FD_ZERO(&rfds);
+
+		fd = nl_socket_get_fd(cache_ctx->rt_sock);
+		FD_SET(fd, &rfds);
+
+		/* wait for an incoming message on the netlink socket */
+		retval = select(fd+1, &rfds, NULL, NULL, NULL);
+
+		if (retval) {
+			if (FD_ISSET(fd, &rfds)) {
+				DBG(1," rt_sock fd %d set\n", fd);
+				nl_recvmsgs_default(cache_ctx->rt_sock);
+			}
+		}
 	}
 
 	/* tell threads to stop */
@@ -98,6 +154,7 @@ int main(int argc, char *argv[])
 
 	ProxyConfig_put(&conf);
 
+	cleanup_libnl_cache(cache_ctx);
 	free(nfq_proxy);
 	return 0;
 }
