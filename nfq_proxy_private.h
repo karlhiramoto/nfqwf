@@ -20,12 +20,13 @@
 
 #define DBG(LVL,FMT,ARG...) \
 	if (LVL <= DEBUG_LEVEL) {\
-		fprintf(stderr, "DBG<" #LVL ">:%s:%d: " FMT, __FUNCTION__, __LINE__, ##ARG); \
+		fprintf(stderr, "WebProxy<" #LVL ">:%s:%d: " FMT, __FUNCTION__, __LINE__, ##ARG); \
 	}
 
 #define ERROR(FMT,ARG...) { fprintf(stderr, "Error:%s:%d: " FMT, __FUNCTION__, __LINE__, ##ARG); }
 
-	
+#define ERROR_FATAL(FMT,ARG...) { ERROR(FMT, ##ARG); BUG(); }
+
 
 #define __init __attribute__ ((constructor))
 #define __exit __attribute__ ((destructor))
