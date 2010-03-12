@@ -10,7 +10,7 @@
 #include "Object.h" // generic object
 
 #define FILTER_OBJECT_COMMON \
-OBJECT_COMMON \
+OBJECT_COMMON; \
 struct Filter_ops *fo_ops; \
 
 /**
@@ -20,15 +20,22 @@ struct Filter_ops *fo_ops; \
 */
 
 
-
+/**
+* A generic filter object that other more specialized filter objects will inherit.
+* This will give us a kind of polymorphism.
+*
+*/
 struct Filter
 {
-	FILTER_OBJECT_COMMON
+	FILTER_OBJECT_COMMON;
 };
 
 struct rule;
 struct HttpReq;
 
+/**
+* Filter Object Operations
+*/
 struct Filter_ops
 {
 	/* parents ops */

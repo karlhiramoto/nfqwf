@@ -1,18 +1,7 @@
 #ifndef NFQ_PROXY
 #define NFQ_PROXY 1
 
-// #include <pthread.h>
 
-
-
-#include "HttpReq.h"
-#include "HttpConn.h"
-
-// struct NfqProxy {
-// 	int q_id; /* NF_QUEUE ID*/
-// 	struct ProxyConfig *config;
-// 	HttpConn_list_t *con_list;
-// };
 struct ProxyConfig;
 struct NfqProxy;
 

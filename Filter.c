@@ -9,6 +9,10 @@
 #include "Filter.h"
 #include "nfq_proxy_private.h"
 
+/**
+* @ingroup FilterObject
+* @{
+*/
 
 static struct Filter_ops *get_fobj_ops(struct Filter *fobj)
 {
@@ -140,3 +144,5 @@ int Filter_fromXml(struct Filter *fo, const char *xml)
 	
 	return ops->foo_load_from_xml(fo, xml);
 }
+
+/** @} */

@@ -21,9 +21,14 @@
 
 struct IpFilter
 {
-	FILTER_OBJECT_COMMON
-	in_addr_t ip; /** IP address to filter */
-	in_addr_t mask; /** Mask to apply to filter */
+	/** Base class members */
+	FILTER_OBJECT_COMMON;
+
+	/** IP address to filter */
+	in_addr_t ip;
+
+	/** Mask to apply to filter */
+	in_addr_t mask; 
 };
 
 
@@ -66,7 +71,7 @@ static struct Filter_ops IpFilter_obj_ops = {
 
 
 /**
-* Initalization function to register this filter type.
+* Initialization function to register this filter type.
 */
 static void __init IpFilter_init(void)
 {

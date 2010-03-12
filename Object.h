@@ -25,9 +25,13 @@ int id; \
 int refcount; \
 struct Object_ops *obj_ops;
 
+/** This is a base object that all other object will inherit
+* it features a unique ID per object and reference counters
+*/
 struct Object
 {
-	OBJECT_COMMON
+	/** Base class members */
+	OBJECT_COMMON;
 };
 
 

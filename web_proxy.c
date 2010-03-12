@@ -1,3 +1,9 @@
+/**
+@mainpage NF_QUEUE based transparent proxy
+@author Karl Hiramoto <karl@hiramoto.org>
+@date 2010
+
+*/
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>

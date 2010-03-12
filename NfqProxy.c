@@ -18,6 +18,9 @@
 #include "nfq-proxy-config.h"
 #endif
 
+
+#include "HttpReq.h"
+#include "HttpConn.h"
 #include "NfqProxy.h"
 #include "FilterType.h"
 #include "FilterList.h"
@@ -32,23 +35,44 @@
 */
 
 
+/**
+* NfqProxy object.   This will be a thread that operates on one queue
+*/
 struct NfqProxy
 {
-	OBJECT_COMMON
-	int q_id; /* NF_QUEUE ID*/
-	bool keep_running;
-	pthread_t thread_id;
+	/** base class members */
+	OBJECT_COMMON;
+
+	/** NF_QUEUE Id number*/
+	int q_id;
+
+	bool keep_running; /*!< should we keep running */
+	pthread_t thread_id;  /*!< This threads ID */
+
+	/** configuration, that contains rules, etc */
 	struct ProxyConfig *config;
+
+	/** libnl socket that we will receive queue messages on */
 	struct nl_sock *nf_sock;
+
+	/** libnl NF_QUEUE configuration. */
 	struct nfnl_queue *nl_queue;
-	HttpConn_list_t *con_list;
+
+	/** Linked list of connections we are tracking */
+	HttpConn_list_t *con_list;  
 };
 
+/**
+* @name Reference Management
+* @{
+*/
 
+/** Get a reference counter */
 void NfqProxy_get(struct NfqProxy *nfq_proxy) {
 	Object_get((struct Object*)nfq_proxy);
 }
 
+/** Release reference counter */
 void NfqProxy_put(struct NfqProxy **nfq_proxy) {
 	
 	DBG(4, "removing proxy reference to %p refcount = %d\n",
@@ -57,6 +81,17 @@ void NfqProxy_put(struct NfqProxy **nfq_proxy) {
 	Object_put((struct Object**)nfq_proxy);
 }
 
+/** @} */
+
+/**
+* @name Constructor and Destructor
+* @{
+*/
+
+/**
+*  Objects constructor
+*  @arg Object that was just allocated
+*/
 int NfqProxy_constructor(struct Object *obj)
 {
 	struct NfqProxy *nfq_proxy = (struct NfqProxy *)obj;
@@ -72,6 +107,10 @@ int NfqProxy_constructor(struct Object *obj)
 	return 0;
 }
 
+/**
+*  Objects destructor
+*  @arg Object that is going to be free'd
+*/
 int NfqProxy_destructor(struct Object *obj)
 {
 	struct NfqProxy *nfq_proxy = (struct NfqProxy *)obj;
@@ -83,8 +122,12 @@ int NfqProxy_destructor(struct Object *obj)
 	nl_socket_free(nfq_proxy->nf_sock);
 	return 0;
 }
+/** @} */
 
 
+/**
+* Object operations
+*/
 static struct Object_ops obj_ops = {
 	.obj_name           = "NfqProxy",
 	.obj_size           = sizeof(struct NfqProxy),
@@ -93,6 +136,9 @@ static struct Object_ops obj_ops = {
 	
 };
 
+/**
+* Allocate object
+*/
 static struct NfqProxy* NfqProxy_alloc(struct Object_ops *ops)
 {
 	struct NfqProxy *nfq_proxy;
@@ -172,7 +218,11 @@ static void* __NfqProxy_main(void *arg)
 	return NULL;
 }
 
-
+/**
+* Create new NfqProxy object
+* @arg q_id   queue number that we will operate on
+* @arg conf   configuration see @link ProxyConfig
+*/
 struct NfqProxy* NfqProxy_new(int q_id, struct ProxyConfig *conf)
 {
 	struct NfqProxy *nfq_proxy = NfqProxy_alloc(&obj_ops);
@@ -223,12 +273,22 @@ int NfqProxy_start(struct NfqProxy* nfq_proxy)
 	return ret;
 }
 
+/**
+* Tell the thread it should stop running
+* @arg  Proxy object
+* @return 0 if OK
+*/
 int NfqProxy_stop(struct NfqProxy* nfq_proxy)
 {
 	nfq_proxy->keep_running = false;
 	return 0;
 }
 
+/**
+* block on pthread_join()
+* @arg  Proxy object
+* @return 0 if OK
+*/
 int NfqProxy_join(struct NfqProxy* nfq_proxy)
 {
 	DBG(5, "Join proxy thread %p\n", nfq_proxy);

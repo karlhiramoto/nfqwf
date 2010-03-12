@@ -10,12 +10,6 @@
 
 #include "Object.h"
 
-/**
-* @ingroup Object
-* @defgroup ProxyConfig Main configuration object
-* @{
-*/
-
 struct ProxyConfig;
 
 void ProxyConfig_get(struct ProxyConfig *conf);
@@ -34,5 +28,4 @@ void ProxyConfig_setHighQNum(struct ProxyConfig* conf, uint16_t num);
 
 void ProxyConfig_setLowQNum(struct ProxyConfig* conf, uint16_t num);
 
-/** @} */
 #endif

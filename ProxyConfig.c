@@ -12,33 +12,58 @@
 #include "Rules.h"
 #include "nfq_proxy_private.h"
 
+/**
+* @ingroup Object
+* @defgroup ProxyConfig ProxyConfig. Main configuration object
+* @{
+*/
+
 
 struct ProxyConfig
 {
-	OBJECT_COMMON
+	/** Base objects member variables */
+	OBJECT_COMMON;
 
 	/** We will use the queue range from low to high.
 	See "man iptables" --queue-balance */
 	uint16_t low_queue_num;
 	uint16_t high_queue_num;
-	
+	char *error_page; 
 	struct ContentFilter *cf; /* content filter object */
 };
 
+/**
+* @name Reference Management
+* @{
+*/
+
+/** Get a reference counter */
 void ProxyConfig_get(struct ProxyConfig *conf) {
 	Object_get((struct Object*) conf);
 	DBG(4, "New reference to ProxyConfig %p refcount = %d\n",
 		conf, conf->refcount);
 }
 
+/** Release reference counter */
 void ProxyConfig_put(struct ProxyConfig **conf) {
 	
-	DBG(4, "removing CF reference to %p refcount = %d\n",
+	DBG(4, "removing Config reference to %p refcount = %d\n",
 		*conf, (*conf)->refcount);
 
 	Object_put((struct Object**) conf);
 }
 
+/** @} */
+
+/**
+* @name Constructor and Destructor
+* @{
+*/
+
+/**
+*  Objects constructor
+*  @arg Object that was just allocated
+*/
 int ProxyConfig_constructor(struct Object *obj)
 {
 	struct ProxyConfig *config = (struct ProxyConfig *)obj;
@@ -46,6 +71,11 @@ int ProxyConfig_constructor(struct Object *obj)
 	return 0;
 }
 
+
+/**
+*  Objects destructor
+*  @arg Object that is going to be free'd
+*/
 int ProxyConfig_destructor(struct Object *obj)
 {
 	struct ProxyConfig *conf = (struct ProxyConfig *)obj;
@@ -54,6 +84,7 @@ int ProxyConfig_destructor(struct Object *obj)
 	return 0;
 }
 
+/** @} */
 
 static struct Object_ops obj_ops = {
 	.obj_name           = "ProxyConfig",
@@ -106,3 +137,5 @@ void ProxyConfig_setHighQNum(struct ProxyConfig* conf,uint16_t num) {
 void ProxyConfig_setLowQNum(struct ProxyConfig* conf,uint16_t num) {
 	conf->low_queue_num = num;
 }
+
+/** @} */
