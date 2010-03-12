@@ -9,6 +9,12 @@
 #include "nfq_proxy_private.h"
 #include "Object.h" // generic object
 
+
+/**
+* Common FilterObject Header
+* This macro must be included as first member in every object,
+* that inherits this FilterObject
+*/
 #define FILTER_OBJECT_COMMON \
 OBJECT_COMMON; \
 struct Filter_ops *fo_ops; \
@@ -21,9 +27,9 @@ struct Filter_ops *fo_ops; \
 
 
 /**
-* A generic filter object that other more specialized filter objects will inherit.
-* This will give us a kind of polymorphism.
-*
+* @struct Filter
+* @brief A generic filter object that other more specialized filter objects will inherit.
+* @brief This will give us a kind of polymorphism.
 */
 struct Filter
 {
@@ -34,7 +40,8 @@ struct rule;
 struct HttpReq;
 
 /**
-* Filter Object Operations
+* @struct Filter_ops
+* @brief FilterObject operations, defines various callbacks on filter objcets.
 */
 struct Filter_ops
 {

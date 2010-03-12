@@ -25,7 +25,9 @@ int id; \
 int refcount; \
 struct Object_ops *obj_ops;
 
-/** This is a base object that all other object will inherit
+/**
+* @struct Object
+* @brief This is a base object that all other object will inherit
 * it features a unique ID per object and reference counters
 */
 struct Object
@@ -36,7 +38,8 @@ struct Object
 
 
 /**
-* Object Operations
+* @struct Object_ops
+* @brief Object operations, defines various Object properties and callbacks.
 */
 struct Object_ops
 {
