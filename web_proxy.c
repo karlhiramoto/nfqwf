@@ -25,10 +25,10 @@ linux iptables NF_QUEUE.
 <li> One thread per queue which will create a netlink socket listening to only one queue ID. </li>
 <li> Each thread/queue will handle the possibility of multiple connections </li>
 <li> Must be tolerant of TCP/IP check-sum faults, out of order packets and packet fragmentation. See TCP RFC 793 </li>
-<li> Filter verdicts. Each web filter rule will have various possible verdicts: </li>
-<li> <li> NONE:   The filter did not match. </li>
-<li> ACCEPT: The filter matched and we should accept (as is now in webchase) </li>
-	<ol>
+<li> Rule verdicts. Each web filter rule will have various possible verdicts: </li>
+<ol>
+	<li> NONE:   The filter did not match. </li>
+	<li> ACCEPT: The filter matched and we should accept (as is now in webchase) </li>
 	<li> REJECT: (as is now in webchase) </li>
 	<li> VIRUS: (as is now in webchase) </li>
 	<li> PHISHING:  Phishing type page that is reported by google safe browising, or comtrend </li>
