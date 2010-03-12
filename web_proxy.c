@@ -71,6 +71,14 @@ linux iptables NF_QUEUE.
 #include "NfqProxy.h"
 #include "nfq_proxy_private.h"
 
+
+/**
+* @defgroup Main main() program.
+* @{
+*/
+
+
+
 /**Current configuration */
 static struct ProxyConfig *conf = NULL;
 static bool keep_running = true;
@@ -136,7 +144,7 @@ static struct libnl_cache_ctx * init_libnl_cache(void)
 	return cache_ctx;
 }
 
-void cleanup_libnl_cache(struct libnl_cache_ctx * cache_ctx)
+static void cleanup_libnl_cache(struct libnl_cache_ctx * cache_ctx)
 {
 	nl_cache_mngt_unprovide(cache_ctx->link_cache);
 	nl_cache_free(cache_ctx->link_cache);
@@ -239,3 +247,4 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
+/** @}  */
