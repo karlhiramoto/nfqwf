@@ -23,13 +23,13 @@ struct Ipv4TcpTuple {
 struct Ipv4TcpPkt {
 	ubi_dlNode node;	/** ubiqx "internal" data */
 	struct Ipv4TcpTuple tuple;
-	uint16_t checksum;
-	uint32_t seq_num;
-	uint32_t ack_num;
-	uint16_t packet_length; /// Length of IP packet
-	uint16_t payload_length; /// Length of TCP payload
-	void *data; /// pointer to raw IP packet data
-	void *payload; /// pointer within data to TCP payload
+	uint16_t checksum; /**< TCP checkum */
+	uint32_t seq_num; /**< TCP Sequence number */
+	uint32_t ack_num; /**< TCP ACK number */
+	uint16_t packet_length; /**< Length of IP packet */
+	uint16_t payload_length; /**< Length of TCP payload */
+	void *data; /**< pointer to raw IP packet data */
+	void *payload; /**< pointer within data to TCP payload */
 };
 
 /** @}  */
