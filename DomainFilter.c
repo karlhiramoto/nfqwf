@@ -5,7 +5,7 @@
 #endif
 
 
-#include <linux/in.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include "Filter.h"

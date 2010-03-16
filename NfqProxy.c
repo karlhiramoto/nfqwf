@@ -205,6 +205,7 @@ static void* __NfqProxy_main(void *arg)
 		FD_SET(fd, &rfds);
 
 		/* wait for an incoming message on the netlink socket */
+		timeout.tv_sec = 3;
 		retval = select(fd+1, &rfds, NULL, NULL, &timeout);
 
 		if (retval) {

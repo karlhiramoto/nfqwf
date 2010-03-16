@@ -146,3 +146,4 @@ int Filter_fromXml(struct Filter *fo, const char *xml)
 }
 
 /** @} */
+

@@ -1,7 +1,6 @@
 #ifndef HTTP_CONNH
 #define HTTP_CONN_H 1
 
-#include <linux/in.h>
 #include <stdbool.h>
 #include <ubiqx/ubi_dLinkList.h>
 

@@ -6,7 +6,6 @@
 #endif
 
 #include <stdbool.h>
-#include <linux/in.h>
 #include "Filter.h"
 #include "Rules.h"
 

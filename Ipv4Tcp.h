@@ -2,7 +2,8 @@
 #define IPV4_H 1
 
 #include <stdint.h>
-#include <linux/in.h>
+// #include <linux/in.h>
+#include <netinet/in.h>
 
 /**
 * @defgroup Ipv4Tcp  TCP/IP version 4 defintions

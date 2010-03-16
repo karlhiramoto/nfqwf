@@ -1,7 +1,6 @@
 #ifndef HTTP_REQ_H
 #define HTTP_REQ_H 1
 
-#include <linux/in.h>
 #include <stdbool.h>
 #include <ubiqx/ubi_dLinkList.h>
 #include "Ipv4Tcp.h"

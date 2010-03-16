@@ -40,7 +40,7 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([string])
 
 AC_ARG_WITH([libnl],
-		AS_HELP_STRING([--with-foo@<:@=DIR@:>@],
+		AS_HELP_STRING([--with-libnl@<:@=DIR@:>@],
 		[use libnl path default is check for it]),
 [],
 [with_libnl=check])
