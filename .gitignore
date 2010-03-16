@@ -17,6 +17,7 @@ depcomp
 .deps
 doc/
 filter_test1
+INSTALL
 install-sh
 libtool
 m4/libtool.m4
