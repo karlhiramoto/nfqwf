@@ -154,18 +154,39 @@ static void __obj_input(struct nl_object *obj, void *arg)
 {
 	struct NfqProxy* nfq_proxy = arg;
 	struct nfnl_queue_msg *msg = (struct nfnl_queue_msg *) obj;
-	struct nl_dump_params dp = {
-		.dp_type = NL_DUMP_STATS,
-		.dp_fd = stdout,
-		.dp_dump_msgtype = 1,
-	};
-// 	int ret;
-// 	int len;
-// 	void *payload = (void *)nfnl_queue_msg_get_payload(msg, &len);
+// 	struct nl_dump_params dp = {
+// 		.dp_type = NL_DUMP_STATS,
+// 		.dp_fd = stdout,
+// 		.dp_dump_msgtype = 1,
+// 	};
+	uint32_t packet_id = nfnl_queue_msg_get_packetid(msg);
+	static uint32_t next_packet_id = 0;
+	struct nfnl_queue_msg *lost_msg = NULL;
+	uint8_t family;
+	uint16_t group;
+	
+	if (packet_id > next_packet_id) {
+		printf("Warning: %d Out of order packets.  Queue or socket overload \n", packet_id - next_packet_id);
+		group = nfnl_queue_msg_get_group(msg);
+		family = nfnl_queue_msg_get_family(msg);
+		lost_msg = nfnl_queue_msg_alloc();
+	
+		do {
+			nfnl_queue_msg_set_group(lost_msg, group);
+			nfnl_queue_msg_set_family(lost_msg, family);
+			nfnl_queue_msg_set_packetid(lost_msg, next_packet_id);
+			nfnl_queue_msg_set_verdict(lost_msg, NF_ACCEPT);
+			nfnl_queue_msg_send_verdict(nfq_proxy->nf_sock, lost_msg);
+			next_packet_id++;
+		} while (packet_id > next_packet_id);
+		nfnl_queue_msg_put(lost_msg);
+	}
+	
+	next_packet_id = packet_id + 1;
 
-	DBG(1, " starting nfq_proxy=%p\n", nfq_proxy);
+// 	DBG(1, " starting nfq_proxy=%p\n", nfq_proxy);
 	nfnl_queue_msg_set_verdict(msg, NF_ACCEPT);
-	nl_object_dump(obj, &dp);
+//  	nl_object_dump(obj, &dp);
 // 	print_packet(msg);
 /*	ret = replace_str_in_pkt(msg, "world", "mundo");
 	if (ret > 0) {
@@ -193,24 +214,52 @@ static void* __NfqProxy_main(void *arg)
 	struct NfqProxy* nfq_proxy = arg;
 	fd_set rfds;
 	int fd, retval;
-	struct timeval timeout = { .tv_sec = 3, .tv_usec = 0}; // OPTIMIZE remove and use otherway to exit select
+	int err;
+	struct timeval timeout = { .tv_sec = 9, .tv_usec = 0}; // OPTIMIZE remove and use otherway to exit select
 
 	DBG(5, " thread main startup %p q=%d\n", nfq_proxy, nfq_proxy->q_id);
+	nl_socket_modify_cb(nfq_proxy->nf_sock, NL_CB_VALID, NL_CB_CUSTOM, __event_input, nfq_proxy);
+	
+	
+	if ((err = nl_connect(nfq_proxy->nf_sock, NETLINK_NETFILTER)) < 0) {
+		ERROR_FATAL("Unable to connect netlink socket: %d %s", err,
+					nl_geterror(err));
+	}
+	
+	nfnl_queue_pf_unbind(nfq_proxy->nf_sock, AF_INET);
+	if ((err = nfnl_queue_pf_bind(nfq_proxy->nf_sock, AF_INET)) < 0) {
+		ERROR_FATAL("Unable to bind logger: %d %s", err,
+					nl_geterror(err));
+	}
+	nfq_proxy->nl_queue = nfnl_queue_alloc();
+	nfnl_queue_set_group(nfq_proxy->nl_queue, nfq_proxy->q_id);
+	
+	nfnl_queue_set_copy_mode(nfq_proxy->nl_queue, NFNL_QUEUE_COPY_PACKET);
+	
+	nfnl_queue_set_copy_range(nfq_proxy->nl_queue, 1024*3);
+	
+	if ((err = nfnl_queue_create(nfq_proxy->nf_sock, nfq_proxy->nl_queue)) < 0) {
+		ERROR_FATAL("Unable to bind queue: %d %s", err, nl_geterror(err));
+	}
+	
+
+	
+	fd = nl_socket_get_fd(nfq_proxy->nf_sock);
+	nl_socket_set_buffer_size(nfq_proxy->nf_sock, 1024*127, 1024*127);
 	while (nfq_proxy->keep_running) {
 		DBG(5, " running thread main loop %p q=%d\n", nfq_proxy, nfq_proxy->q_id);
 
 		FD_ZERO(&rfds);
 
-		fd = nl_socket_get_fd(nfq_proxy->nf_sock);
 		FD_SET(fd, &rfds);
 
 		/* wait for an incoming message on the netlink socket */
-		timeout.tv_sec = 3;
+		timeout.tv_sec = 9;
 		retval = select(fd+1, &rfds, NULL, NULL, &timeout);
 
 		if (retval) {
 			if (FD_ISSET(fd, &rfds)) {
-				DBG(1," nf_sock fd %d set\n", fd);
+				DBG(5, " nf_sock fd %d set\n", fd);
 				nl_recvmsgs_default(nfq_proxy->nf_sock);
 			}
 		}
@@ -227,33 +276,9 @@ static void* __NfqProxy_main(void *arg)
 struct NfqProxy* NfqProxy_new(int q_id, struct ProxyConfig *conf)
 {
 	struct NfqProxy *nfq_proxy = NfqProxy_alloc(&obj_ops);
-	int err;
 
 	nfq_proxy->q_id = q_id;
 	nfq_proxy->config = conf;
-	nl_socket_modify_cb(nfq_proxy->nf_sock, NL_CB_VALID, NL_CB_CUSTOM, __event_input, nfq_proxy);
-
-
-	if ((err = nl_connect(nfq_proxy->nf_sock, NETLINK_NETFILTER)) < 0) {
-		ERROR_FATAL("Unable to connect netlink socket: %d %s", err,
-			nl_geterror(err));
-	}
-
-	nfnl_queue_pf_unbind(nfq_proxy->nf_sock, AF_INET);
-	if ((err = nfnl_queue_pf_bind(nfq_proxy->nf_sock, AF_INET)) < 0) {
-	   ERROR_FATAL("Unable to bind logger: %d %s", err,
-			nl_geterror(err));
-	}
-	nfq_proxy->nl_queue = nfnl_queue_alloc();
-	nfnl_queue_set_group(nfq_proxy->nl_queue, nfq_proxy->q_id);
-
-	nfnl_queue_set_copy_mode(nfq_proxy->nl_queue, NFNL_QUEUE_COPY_PACKET);
-
-	nfnl_queue_set_copy_range(nfq_proxy->nl_queue, 0xFFFF);
-
-	if ((err = nfnl_queue_create(nfq_proxy->nf_sock,nfq_proxy->nl_queue)) < 0) {
-		ERROR_FATAL("Unable to bind queue: %d %s", err, nl_geterror(err));
-	}
 
 	return nfq_proxy;
 }
