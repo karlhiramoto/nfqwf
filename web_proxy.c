@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
 			}
 			
 			if (FD_ISSET(max_fd, &rfds)) {
-				DBG(1," rt_sock+1 fd %d set\n", fd);
+				DBG(1," rt_sock fd %d set\n", fd);
 				nl_recvmsgs_default(cache_ctx->rt_sock);
 			}
 		}
