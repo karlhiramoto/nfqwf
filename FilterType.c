@@ -24,7 +24,7 @@ static struct Filter_ops* FilterType_list_search(const char *name)
 	int i;
 
 	for (i = 0; FilterType_list && FilterType_list[i]; i++) {
-		if (!strcmp(name, FilterType_list[i]->ops->obj_name)) {
+		if (!strcmp(name, FilterType_list[i]->ops->obj_type)) {
 			return FilterType_list[i];
 		}
 	}
@@ -35,11 +35,11 @@ static struct Filter_ops* FilterType_list_search(const char *name)
 int FilterType_register(struct Filter_ops *fo_ops)
 {
 	const char *name;
-	if (!fo_ops || !fo_ops->ops->obj_name || !fo_ops->ops->obj_name[0]) {
+	if (!fo_ops || !fo_ops->ops->obj_type || !fo_ops->ops->obj_type[0]) {
 		DBG(1, "Invalid filter name\n");
 		return -EINVAL;
 	}
-	name = fo_ops->ops->obj_name;
+	name = fo_ops->ops->obj_type;
 	if(FilterType_list_search(name)) {
 		DBG(1, "Invalid duplicate filter '%s'\n", name);
 	}

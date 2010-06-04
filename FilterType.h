@@ -1,8 +1,8 @@
-#ifndef FILTERS_H
-#define FILTERS_H
+#ifndef FILTER_TYPE_H
+#define FILTER_TYPE_H
 
 #ifdef HAVE_CONFIG_H
-#include "nfq-proxy-config.h"
+#include "nfq-web-filter-config.h"
 #endif
 
 struct Filter_ops;
