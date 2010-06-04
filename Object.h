@@ -2,7 +2,7 @@
 #define OBJECT_H
 
 #ifdef HAVE_CONFIG_H
-#include "nfq-proxy-config.h"
+#include "nfq-web-filter-config.h"
 #endif
 
 #include <stdbool.h>
@@ -43,8 +43,8 @@ struct Object
 */
 struct Object_ops
 {
-	/** Unique name of the filter */
-	char * obj_name;
+	/** Unique type name of the object */
+	char * obj_type;
 	
 	/** Size of object */
 	size_t obj_size;

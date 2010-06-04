@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
 #ifdef HAVE_CONFIG_H
-#include "nfq-proxy-config.h"
+#include "nfq-web-filter-config.h"
 #endif
 
 #include "Object.h"
@@ -42,7 +42,7 @@ struct Object *Object_alloc(struct Object_ops *ops)
 	if (ops->obj_constructor)
 		ops->obj_constructor(new_obj);
 	
-	DBG(4, "Allocated new object %p\n", new_obj);
+	DBG(4, "Allocated new object %p name='%s'\n", new_obj, ops->obj_type);
 	
 	return new_obj;
 }
@@ -53,12 +53,12 @@ void Object_free(struct Object **obj)
 	struct Object_ops *ops = get_obj_ops(*obj);
 
 	if ((*obj)->refcount > 0)
-		DBG(1, "Warning: Freeing object in use...\n");
+		DBG(1, "Warning: Freeing object in use... name='%s'\n", ops->obj_type);
 
 	if (ops->obj_destructor)
 		ops->obj_destructor(*obj);
 
-	DBG(4, "Free object %p\n", *obj);
+	DBG(4, "Free object %p name='%s'\n", *obj, ops->obj_type);
 
 	free(*obj);
 	*obj = NULL;
