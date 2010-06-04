@@ -2,7 +2,7 @@
 #include <errno.h>
 
 #ifdef HAVE_CONFIG_H
-#include "nfq-proxy-config.h"
+#include "nfq-web-filter-config.h"
 #endif
 
 
@@ -98,8 +98,8 @@ void Filter_free(struct Filter **obj_in)
 void Filter_get(struct Filter *obj)
 {
 	obj->refcount++;
-	DBG(4, "New reference to filter object %p, total refcount %d\n",
-	       obj, obj->refcount);
+	DBG(4, "New reference to filter object '%s' %p, total refcount %d\n",
+		obj->fo_ops->ops->obj_type, obj, obj->refcount);
 }
 
 /**
@@ -116,8 +116,8 @@ void Filter_put(struct Filter **obj_in)
  	obj = *obj_in;
 
 	obj->refcount--;
-	DBG(4, "Returned object reference %p, %d remaining\n",
-		obj, obj->refcount);
+	DBG(4, "Returned object reference '%s' %p, %d remaining\n",
+		obj->fo_ops->ops->obj_type, obj, obj->refcount);
 	       
 	if (obj->refcount < 0)
 		BUG();
@@ -132,17 +132,31 @@ bool Filter_shared(struct Filter *obj)
 	return obj->refcount > 1;
 }
 
-int Filter_fromXml(struct Filter *fo, const char *xml)
+int Filter_fromXml(struct Filter *fo, xmlNode *node)
 {
+	xmlChar *prop = NULL;
 	struct Filter_ops *ops = get_fobj_ops(fo);
+	int id;
 	
 	if (!ops->foo_load_from_xml) {
 		DBG(1, "Invalid object does not have load XML operation\n");
 		return -EINVAL;
 	}
 	DBG(5, "Calling load XML operation\n");
-	
-	return ops->foo_load_from_xml(fo, xml);
+
+	prop = xmlGetProp(node, BAD_CAST FILTER_ID_XML_PROP);
+	if (!prop) {
+		ERROR(" filter objects MUST have '%s' XML props \n", FILTER_ID_XML_PROP);
+		return -1;
+	}
+
+	id = atoi((char *)prop);
+	Filter_setFilterId(fo, id);
+	DBG(5, " %s = %s = %d = %d\n", FILTER_ID_XML_PROP, prop, Filter_getFilterId(fo), id);
+
+	xmlFree(prop);
+
+	return ops->foo_load_from_xml(fo, node);
 }
 
 /** @} */

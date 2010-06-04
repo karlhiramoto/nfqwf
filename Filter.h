@@ -2,9 +2,10 @@
 #define FILTER_OBJECT_H
 
 #ifdef HAVE_CONFIG_H
-#include "nfq-proxy-config.h"
+#include "nfq-web-filter-config.h"
 #endif
 
+#include <libxml/tree.h>
 
 #include "nfq_proxy_private.h"
 #include "Object.h" // generic object
@@ -17,6 +18,7 @@
 */
 #define FILTER_OBJECT_COMMON \
 OBJECT_COMMON; \
+int filter_id; \
 struct Filter_ops *fo_ops; \
 
 /**
@@ -49,14 +51,6 @@ struct Filter_ops
 	struct Object_ops *ops;
 
 	/**
-	  Optional size of private data that will be assiged per HTTP request.
-	  This can be used to store state.
-	  This is the inital size of the pointer passed in, the fillter object
-	  may relloc() if it wishes. 
-	*/
-	int private_req_data_size;
-	
-	/**
 	* Optional callback(virtual method) to init/allocate any private data
 	*/
 	int (*foo_constructor)(struct Filter *);
@@ -72,28 +66,34 @@ struct Filter_ops
 	/*optional callback to compare two filters */
 	int (*foo_compare)(struct Filter *dst, struct Filter *src);
 
-	/** Used to preload or start any async operation
+	/** OPTIONAL Used to preload or start any async operation
 	This is called when request comes from the client
 	NOTE the filter object will be responsible for maintaining its own request table
 	*/
-	int (*foo_request_start)(struct Filter *obj, struct HttpReq *, void *priv_req_data);
-	
+	int (*foo_request_start)(struct Filter *obj, struct HttpReq *);
+
 	/** @brief Check if filter object matches request
 	    This is called when request comes back from server.
 	    @param obj   This filter object
 	    @param HttpReq Http Request we are going to filter
-	    @param priv_req_data double pointer to data private
-	    to this filter object and unique to this http request
 	    @returns 1 on match, 0 no match, or -errno
 	*/
-	int (*foo_matches_req)(struct Filter *obj, struct HttpReq *, void *priv_req_data);
+	int (*foo_matches_req)(struct Filter *obj, struct HttpReq *);
 
 
-	// FIXME some kind of filter for AV
-	int (*foo_file_filter)(struct Filter *obj, struct HttpReq *, int *fd);
+	int (*foo_stream_filter)(struct Filter *obj, struct HttpReq *,
+			const unsigned char *data_stream, unsigned int length);
 	
-	/* to load xml.. TODO use libxml2 type */
-	int (*foo_load_from_xml)(struct Filter *, const char *xml);
+	// FIXME some kind of filter for AV
+	int (*foo_file_filter)(struct Filter *obj, struct HttpReq *);
+	
+	/**
+	* Load filter object from XML config
+	* @param obj  Filter object
+	* @param xml  Node that is the root of this, filter object,
+	*             may have attributes and/or children.
+	*/
+	int (*foo_load_from_xml)(struct Filter *obj, xmlNode *node);
 	
 	/*for debug */
 	int (*foo_print)(struct Filter *);
@@ -110,6 +110,16 @@ void Filter_free(struct Filter **obj);
 void Filter_get(struct Filter *obj);
 void Filter_put(struct Filter **obj);
 
+static inline void Filter_setFilterId(struct Filter *obj, int id) {
+	obj->filter_id = id;
+}
+static inline int Filter_getFilterId(struct Filter *obj) {
+	return obj->filter_id;
+}
+/** get Lower inherited  object  ID, NOTE should be read only */
+static inline int Filter_getObjId(struct Filter *obj) {
+	return obj->id;
+}
 /**
 * Check whether this object is used by multiple users
 * @param obj  object to check
@@ -124,9 +134,10 @@ end of refrence management
 /**
 * Load filter object from XML config
 * @param obj  Filter object
-* @param xml  xml config   FIXME change xml to use libxml2
+* @param xml  Node that is the root of this, filter object,
+*             may have attributes and/or children.
 */
-int Filter_fromXml(struct Filter *obj, const char *xml);
+int Filter_fromXml(struct Filter *obj, xmlNode *node);
 
 /** @}
 end of Object file
