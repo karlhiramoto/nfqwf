@@ -8,14 +8,22 @@
 * @{
 */
 struct FilterList;
+struct Filter;
 
 struct FilterList*  FilterList_new(void);
 
-void FilterList_free(struct FilterList **fl);
+void FilterList_del(struct FilterList **fl);
 
 struct FilterList* FilterList_addTail(struct FilterList *fl, struct Filter *fo);
 
 struct Filter* FilterList_searchObjId(struct FilterList *fl, int id);
+
+struct Filter* FilterList_searchFilterId(struct FilterList *fl, int id);
+
+unsigned int FilterList_count(struct FilterList *fl);
+
+int FilterList_foreach(struct FilterList *fl, void *data, int (*cb_func)(struct Filter *, void *));
+
 /** @} */
 
 #endif
