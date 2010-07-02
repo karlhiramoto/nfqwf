@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <string.h>
 #include <syslog.h>
+#include <sys/time.h>
 
 #ifdef HAVE_CONFIG_H
 #include "nfq-web-filter-config.h"
@@ -14,7 +15,7 @@
 #include "Rules.h"
 #include "HttpReq.h"
 #include "HttpConn.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 
 /**
 * Content filter object.
@@ -72,7 +73,7 @@ int ContentFilter_destructor(struct Object *obj)
 	for (i = 0; i < cf->rule_list_count; i++) {
 		DBG(5, " Free rule %d\n", i);
 		if (cf->rule_list[i])
-			Rule_del(&cf->rule_list[i]);
+			Rule_put(&cf->rule_list[i]);
 	}
 	free(cf->rule_list);
 	DBG(5, " Free FilterList objects\n");
@@ -134,7 +135,7 @@ static int ContentFilter_loadRuleNode(struct ContentFilter* cf, xmlNode *rule_no
 	struct Rule *rule;
 	xmlChar *prop = NULL;
 	int ret = 0;
-	int id = 0;
+	unsigned int id = 0;
 	int log = 0;
 	enum Action action = Action_nomatch;
 	char buffer[32];
@@ -149,7 +150,7 @@ static int ContentFilter_loadRuleNode(struct ContentFilter* cf, xmlNode *rule_no
 		return -ENOENT;
 	}
 
-	ret = sscanf((char *) prop, "%d", &id);
+	ret = sscanf((char *) prop, "%u", &id);
 	if (ret < 1) {
 		ERROR(" Parsing %s\n", RULE_ID_XML_PROP);
 	}
@@ -187,7 +188,7 @@ static int ContentFilter_loadRuleNode(struct ContentFilter* cf, xmlNode *rule_no
 		xmlFree(prop);
 	}
 	
-	DBG(1, "Rule ID=%d action=%s log=%d comment='%s'\n", id,
+	DBG(1, "Rule ID=%u action=%s log=%d comment='%s'\n", id,
 		Action_toAscii(action, buffer, sizeof(buffer)), log,
 		Rule_getComment(rule));
 
@@ -206,7 +207,7 @@ static int ContentFilter_loadRuleNode(struct ContentFilter* cf, xmlNode *rule_no
 			continue;
 		}
 		
-		ret = sscanf((char *) prop, "%d", &id);
+		ret = sscanf((char *) prop, "%u", &id);
 		if (ret < 1) {
 			ERROR(" Parsing %s in rule %d\n",
 				FILTER_ID_XML_PROP, Rule_getId(rule));
@@ -230,16 +231,16 @@ static int ContentFilter_loadRuleNode(struct ContentFilter* cf, xmlNode *rule_no
 		}
 		xmlFree(prop);
 		if (group >= MAX_FITER_GROUPS) {
-			ERROR("group ID must be 0-%d\n", MAX_FITER_GROUPS-1);
+			ERROR_FATAL("group ID must be 0-%d\n", MAX_FITER_GROUPS-1);
 			continue;
 		}
 
 		fo = FilterList_searchFilterId(cf->obj_list, id);
 		if (!fo) {
-			ERROR("Filter ID=%d not found.\n", id);
+			ERROR("Filter ID=%u not found.\n", id);
 			continue;
 		}
-		DBG(1, "Rule_ID=%d Filter_ID=%d, group=%d\n",
+		DBG(1, "Rule_ID=%d Filter_ID=%u, group=%d\n",
 			Rule_getId(rule), id, group);
 
 		Rule_addFilter(rule, group, fo);
@@ -409,22 +410,13 @@ int ContentFilter_requestStart(struct ContentFilter* cf, struct HttpReq *req)
 	return 0;
 }
 
-/**
-* @brief Log the request
-* @todo Think about making log plugin modules that we register like the filters
-**/
-static void __ContentFilter_logReq(struct ContentFilter* cf, struct HttpReq *req, struct Rule *rule)
-{
-	//TODO for each log plugin.  Call log.
-	syslog(LOG_INFO, "Proxy matched rule id=%d url='%s' verdict=%d length=%llu",
-		   req->rule_matched, req->url, req->verdict, req->server_resp_msg.content_length);
-		   
-}
+
 
 int ContentFilter_getRequestVerdict(struct ContentFilter* cf, struct HttpReq *req)
 {
 	struct Rule *rule;
 	int i;
+	enum Action verdict;
 
 	/* for each rule */
 	for (i = 0; i < cf->rule_list_count; i++) {
@@ -432,37 +424,56 @@ int ContentFilter_getRequestVerdict(struct ContentFilter* cf, struct HttpReq *re
 		if (!rule)
 			ERROR_FATAL("Bug invalid rule list\n");
 
-		req->verdict = Rule_getVerdict(rule, req);
+		verdict = Rule_getVerdict(rule, req);
 
-		if (req->verdict != Action_nomatch) {
-			req->rule_matched = Rule_getId(rule);
-
-			// if we should send a log message.
-			if (rule->log  || rule->notify)
-				__ContentFilter_logReq(cf, req, rule);
+		if (verdict != Action_nomatch && verdict != -1) {
+			HttpReq_setRuleMatched(req, rule);
 
 			/* match found, return verdict */
-			return req->verdict;
+			return verdict;
 		}
 	}
 	/* no rule  match return default */
 	return cf->default_action;
 }
 
+struct Rule * __get_first_rule_with_filter(struct ContentFilter* cf, struct Filter *fo)
+{
+	struct Rule *rule;
+	int i;
+	
+	/* for each rule */
+	for (i = 0; i < cf->rule_list_count; i++) {
+		rule = cf->rule_list[i];
+		
+		if (Rule_containsFilter(rule, fo, NULL))  {
+			return rule;
+		}
+	}
+	return NULL;
+}
+
 struct stream_cb_args {
 	const unsigned char *data_stream;
 	unsigned int length;
 	struct HttpReq *req;
+	struct Filter *filter_matched;
 };
 
 static int stream_filter_cb(struct Filter *fo, void *data)
 {
 	struct stream_cb_args *args;
+	int rc;
 
 	if (fo->fo_ops->foo_stream_filter) {
 		args = (struct stream_cb_args *) data;
-		return fo->fo_ops->foo_stream_filter(fo, args->req,
-				args->data_stream, args->length);
+
+		rc = fo->fo_ops->foo_stream_filter(fo, args->req,
+			args->data_stream, args->length);
+		if (rc != Action_nomatch && rc != -1) {
+			args->filter_matched = fo;
+		}
+
 	}
 	
 	return 0;
@@ -473,53 +484,124 @@ int ContentFilter_filterStream(struct ContentFilter* cf, struct HttpReq *req,
 {
 	int rc = 0;
 	struct stream_cb_args args;
-
-	args.data_stream = data_stream;
-	args.length = length;
-	args.req = req;
-
-	DBG(5, "Starting length=%d\n", length);
+	struct Rule *rule;
 
 	if (cf->has_stream_filter) {
+		args.data_stream = data_stream;
+		args.length = length;
+		args.req = req;
+		args.filter_matched = NULL;
+
+		DBG(5, "Starting length=%d\n", length);
+
 		rc = FilterList_foreach(cf->obj_list, &args, stream_filter_cb);
-		if (rc != Action_nomatch)
-			return rc;
+		
+		if (args.filter_matched) {
+			rule = __get_first_rule_with_filter(cf, args.filter_matched);
+			if (!rule) {
+				ERROR("Bad config, filter with no rule\n");
+			} else {
+				HttpReq_setRuleMatched(req, rule);
+				return rc;
+			}
+		}
 	}
 
-	if (cf->has_file_filter) {
-
-	}
-	
-	return rc;
+	return Action_nomatch;
 }
 
+struct file_filter_cb_args {
+	struct HttpReq *req;
+	struct Filter *filter_matched;
+};
 
 static int file_filter_cb(struct Filter *fo, void *data)
 {
-	struct HttpReq *req;
+	struct file_filter_cb_args *args;
+	int rc;
 
 	if (fo->fo_ops->foo_file_filter) {
-		req = (struct HttpReq *) data;
-		return fo->fo_ops->foo_file_filter(fo, req);
+		args = (struct file_filter_cb_args *) data;
+		rc = fo->fo_ops->foo_file_filter(fo, args->req);
+		if (rc != Action_nomatch && rc != -1) {
+			args->filter_matched = fo;
+		}
+		return rc;
 	}
-	
+
 	return 0;
 }
-
 
 int ContentFilter_fileScan(struct ContentFilter* cf, struct HttpReq *req)
 {
 	int rc = 0;
+	struct file_filter_cb_args args;
+	struct Rule *rule;
 
+	args.req = req;
+	args.filter_matched = NULL;
 	if (cf->has_file_filter) {
-		rc = FilterList_foreach(cf->obj_list, req, file_filter_cb);
+		rc = FilterList_foreach(cf->obj_list, &args, file_filter_cb);
+		if (args.filter_matched) {
+			rule = __get_first_rule_with_filter(cf, args.filter_matched);
+			if (!rule) {
+				ERROR("Bad config, filter with no rule\n");
+			} else {
+				HttpReq_setRuleMatched(req, rule);
+				return rc;
+			}
+		}
 	}
 
-	return rc;
+	return Action_nomatch;
 }
 
 bool ContentFilter_hasFileFilter(struct ContentFilter* cf)
 {
 	return cf->has_file_filter;
+}
+
+/**
+* @brief  get time difference
+* @returns void
+*/
+
+static void diff_timeval(struct timeval *t1, struct timeval *t2, struct timeval *diff){
+	diff->tv_sec= t1->tv_sec - t2->tv_sec;
+	diff->tv_usec= t1->tv_usec - t2->tv_usec;
+	
+	if (diff->tv_sec && diff->tv_usec < 0) {
+		diff->tv_sec--;
+		diff->tv_usec+=1000000;
+	}
+}
+
+
+/**
+* @brief Log the request
+* @todo Think about making log plugin modules that we register like the filters
+**/
+void ContentFilter_logReq(struct ContentFilter* cf, struct HttpReq *req)
+{
+	struct Rule *rule;
+	struct timeval now;
+	struct timeval delta_time;
+
+	if (!req->rule_matched) {
+		ERROR("No rule matched can not log\n");
+	}
+	rule = req->rule_matched;
+
+	// if we should not log the message.
+	if (!rule->log && !rule->notify)
+		return;
+
+	gettimeofday(&now, NULL);
+	diff_timeval(&now, &req->start_time, &delta_time);
+	//TODO for each log plugin.  Call log.
+	syslog(LOG_INFO, "WF matched rule id=%d url='%s' verdict=%d length=%llu received=%llu duration=%d.%04d",
+		Rule_getId(rule), req->url, rule->action, req->server_resp_msg.content_length,
+		req->server_resp_msg.content_received,
+		delta_time.tv_sec, delta_time.tv_usec/1000);
 }
 

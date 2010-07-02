@@ -8,6 +8,8 @@
 struct Filter_ops;
 struct Filter;
 
+void FilterType_addLibPath(const char *path);
+
 int FilterType_register(struct Filter_ops *ops);
 
 struct Filter *FilterType_get_new(const char *name);

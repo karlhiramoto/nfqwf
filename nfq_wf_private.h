@@ -1,5 +1,5 @@
-#ifndef NFQ_PROXY_PRIVATE_H
-#define NFQ_PROXY_PRIVATE_H
+#ifndef NFQ_WF_PRIVATE_H
+#define NFQ_WF_PRIVATE_H
 
 #ifdef HAVE_CONFIG_H
 #include "nfq-web-filter-config.h"
@@ -18,9 +18,9 @@
 		assert(0);	\
 	} while (0)
 
+/* program name is package name from config.h*/
+#define PROG_NAME PACKAGE
 
-#define PROG_NAME "qproxy"
-#define VERSION_STR "0.1"
 #define PRINT(FMT,ARG...) printf(PROG_NAME": " FMT, ##ARG); \
 	
 
@@ -71,5 +71,5 @@ syslog(LOG_CRIT, PROG_NAME " Critical:%s:%d: " FMT, __FUNCTION__, __LINE__, ##AR
 #define RULE_ID_XML_PROP "Rule_ID"
 #define GROUP_XML_PROP "group"
 
-#endif /* NFQ_PROXY_PRIVATE_H */
+#endif /* NFQ_WF_PRIVATE_H */
 

@@ -45,6 +45,7 @@ char *Action_toAscii(enum Action action, char *buffer, int buf_size);
 
 /** Rule definition. */
 struct Rule {
+	OBJECT_COMMON
 	int rule_id;   /**< Rule ID */
 	bool disabled; /**< Is rule disabled */
 	bool log;      /**< Log this rule if it matches */
@@ -65,8 +66,8 @@ struct Rule {
 
 
 struct Rule* Rule_new(void);
-
-void Rule_del(struct Rule **r);
+void Rule_get(struct Rule *r);
+void Rule_put(struct Rule **r);
 
 void Rule_setId(struct Rule *r, int id);
 
@@ -77,7 +78,7 @@ void Rule_setDiabled(struct Rule *r, bool disabled);
 bool Rule_isDiabled(struct Rule *r);
 void Rule_setAction(struct Rule *r, enum Action a);
 void Rule_addFilter(struct Rule *r, unsigned int group, struct Filter *fo);
-
+bool Rule_containsFilter(struct Rule *r, struct Filter *fo, unsigned int *group);
 void Rule_setComment(struct Rule *r, const char *comment);
 
 static inline const char *Rule_getComment(struct Rule *r) {

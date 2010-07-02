@@ -66,8 +66,9 @@ int Ipv4TcpPkt_printPkt(struct Ipv4TcpPkt *pkt, FILE *stream);
 void Ipv4TcpPkt_setTcpFlag(struct Ipv4TcpPkt *pkt, int flag_val);
 void Ipv4TcpPkt_clearTcpFlag(struct Ipv4TcpPkt *pkt, int flag_val);
 
-void Ipv4TcpPkt_setNlVerictAccept(struct Ipv4TcpPkt *pkt);
+// void Ipv4TcpPkt_setNlVerictAccept(struct Ipv4TcpPkt *pkt);
 void Ipv4TcpPkt_setNlVerictDrop(struct Ipv4TcpPkt *pkt);
+
 void Ipv4TcpPkt_resetTcpCon(struct Ipv4TcpPkt *pkt);
 void print_hex(const unsigned char* payload, int len);
 

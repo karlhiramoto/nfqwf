@@ -37,5 +37,7 @@ int ContentFilter_fileScan(struct ContentFilter* cf, struct HttpReq *req);
 
 bool ContentFilter_hasFileFilter(struct ContentFilter* cf);
 
+void ContentFilter_logReq(struct ContentFilter* cf, struct HttpReq *req);
+
 /** @} */
 #endif

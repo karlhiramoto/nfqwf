@@ -10,7 +10,7 @@
 
 #include "FilterList.h"
 #include "Rules.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 
 
 const char *ActionTypeStr[] = {
@@ -97,33 +97,67 @@ char *Action_toAscii(enum Action action, char *buffer, int buf_size)
 }
 
 
-struct Rule* Rule_new(void)
+void Rule_get(struct Rule *r) {
+	r->refcount++;
+	DBG(5, "New reference to Rule %p refcount = %d\n",
+		r, r->refcount);
+}
+
+void Rule_put(struct Rule **r) {
+	
+	DBG(5, "removing Rule reference to %p refcount = %d id=%d\n",
+		*r, (*r)->refcount, (*r)->rule_id);
+
+	Object_put((struct Object**)r);
+}
+
+int Rule_constructor(struct Object *obj)
 {
-	struct Rule* r;
 	int i;
-	r = calloc(1, sizeof(struct Rule));
-	if (!r)
-		ERROR_FATAL("calloc of rule failed");
+	struct Rule* r = (struct Rule*) obj;
+
+	DBG(5, "constructor rule size=%d rule=%p\n", sizeof(struct Rule), r);
 
 	for (i = 0; i < MAX_FITER_GROUPS; i++) {
 		r->filter_groups[i] = FilterList_new();
+		DBG(5, "new filter list %p for group %d rule = %p \n",
+			r->filter_groups[i], i, r);
 	}
 
-	return r;
+	return 0;
 }
 
-void Rule_del(struct Rule **r)
+int Rule_destructor(struct Object *obj)
 {
-	struct Rule *rule = *r;
+	struct Rule *rule = (struct Rule*) obj;
 	int i;
 
 	for (i = 0; i < MAX_FITER_GROUPS; i++) {
 		FilterList_del(&(rule->filter_groups[i]));
 	}
 
-	free(rule);
-	*r = NULL;
+	return 0;
 }
+
+static struct Object_ops obj_ops = {
+	.obj_type           = "Rule",
+	.obj_size           = sizeof(struct Rule),
+	.obj_constructor    = Rule_constructor,
+	.obj_destructor     = Rule_destructor,
+	
+};
+
+static struct Rule* Rule_alloc(struct Object_ops *ops)
+{
+	return (struct Rule*) Object_alloc(ops);
+}
+
+
+struct Rule* Rule_new(void)
+{
+	return Rule_alloc(&obj_ops);
+}
+
 
 void Rule_setId(struct Rule *r, int id)
 {
@@ -152,10 +186,13 @@ void Rule_setAction(struct Rule *r, enum Action a)
 
 void Rule_addFilter(struct Rule *r, unsigned int group, struct Filter *fo)
 {
+
 	if (group > MAX_FITER_GROUPS-1) {
 		// invalid
 		ERROR_FATAL("Invalid filter group %d\n", group);
 	}
+	DBG(2, "rule id=%d add to group %d list %p rule %p\n", r->rule_id, group,
+		r->filter_groups[group], r);
 
 	FilterList_addTail(r->filter_groups[group], fo);
 }
@@ -185,14 +222,19 @@ enum Action Rule_getVerdict(struct Rule *r,  struct HttpReq *req)
 {
 	int i;
 	bool matches;
+	int group_count;
 
 	for (i = 0 ; i < MAX_FITER_GROUPS; i++) {
-		
+
+		group_count = FilterList_count(r->filter_groups[i]);
+		DBG(7, "Rule %d Filter group %d has %d filters\n",
+			r->rule_id, i, group_count);
 		/*if group is empty it matches the ANY '*' case */
-		if (FilterList_count(r->filter_groups[i])) {
+		if (group_count) {
 			matches = FilterList_foreach(r->filter_groups[i],
 					req, rule_filter_match_cb);
 
+			// if matched nothing in this group, does not match 
 			if (!matches)
 				return Action_nomatch;
 		}
@@ -201,3 +243,19 @@ enum Action Rule_getVerdict(struct Rule *r,  struct HttpReq *req)
 	return r->action;
 }
 
+bool Rule_containsFilter(struct Rule *r, struct Filter *fo, unsigned int *group)
+{
+	int i;
+
+	for (i = 0 ; i < MAX_FITER_GROUPS; i++) {
+
+		/*if group is empty it matches the ANY '*' case */
+		if (FilterList_contains(r->filter_groups[i], fo)) {
+			if (group) {
+				*group = i;
+			}
+			return true;
+		}
+	}
+	return false;
+}

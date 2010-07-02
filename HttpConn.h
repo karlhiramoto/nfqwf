@@ -35,7 +35,7 @@ struct HttpConn {
 	enum tcp_conntrack client_state;
 	enum tcp_conntrack server_state;
 	/// Contains pointer with reference to content filter and its rules
-	struct ProxyConfig *config;
+	struct WfConfig *config;
 //  	struct ContentFilter *c_filter;
 
 	struct PrivData *priv_data;
@@ -51,13 +51,11 @@ struct HttpConn {
 	
 };
 
-// struct HttpConn* HttpConn_new( struct Ipv4TcpPkt *pkt);
-struct HttpConn* HttpConn_new(struct ProxyConfig *config);
+
+struct HttpConn* HttpConn_new(struct WfConfig *config);
 void HttpConn_del(struct HttpConn **con);
 int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt);
 
-// void *HttpConn_newPrivData(struct HttpConn* con, int key, int size, void (*free_fn)(void *));
-// void *HttpConn_getPrivData(struct HttpConn* con, int key);
 
 typedef ubi_dlList HttpConn_list_t;
 

@@ -27,7 +27,7 @@
 */
 
 #include "Ipv4Tcp.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 
 
 struct Ipv4TcpPkt *Ipv4TcpPkt_new(unsigned nl_buff_size)
@@ -476,14 +476,17 @@ int Ipv4TcpPkt_parseNlHdrMsg(struct Ipv4TcpPkt *pkt, struct nlmsghdr *nlh)
 	return err;
 }
 
+#if 0
 void Ipv4TcpPkt_setNlVerictAccept(struct Ipv4TcpPkt *pkt)
 {
 	nfnl_queue_msg_set_verdict(pkt->nl_qmsg, NF_ACCEPT);
 }
- 
+#endif
+
 void Ipv4TcpPkt_setNlVerictDrop(struct Ipv4TcpPkt *pkt) {
 	nfnl_queue_msg_set_verdict(pkt->nl_qmsg, NF_DROP);
 }
+
 
 void Ipv4TcpPkt_resetTcpCon(struct Ipv4TcpPkt *pkt) {
 	Ipv4TcpPkt_setTcpFlag(pkt, (TCP_FLAG_FIN | TCP_FLAG_RST)); // set FIN RST

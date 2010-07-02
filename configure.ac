@@ -1,4 +1,4 @@
-AC_INIT([NF_QUEUE based web filter], [0.1], [karl@hiramoto.org], [nfq_web_filter])
+AC_INIT([NF_QUEUE based web filter], [0.2], [karl@hiramoto.org], [nfqwf])
 AC_PREREQ(2.61)
 
 AC_CONFIG_MACRO_DIR([m4])
@@ -38,6 +38,9 @@ AC_LANG([C])
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([string])
+
+AC_CHECK_LIB([c], [fallocate],
+	AC_DEFINE([HAVE_FALLOCATE], [1],[Has fallocate call]))
 
 AC_ARG_WITH([libnl],
 		AS_HELP_STRING([--with-libnl@<:@=DIR@:>@],
@@ -96,6 +99,11 @@ AC_SUBST(XML2_INCLUDE)
 AC_SUBST(XML2_LDFLAGS)
 
 
+AC_ARG_ENABLE(internal-plugins,
+			  AS_HELP_STRING([--enable-internal-plugins],
+							 [compile plugin objects directly in main binary])
+		)
+
 AC_ARG_ENABLE(tests,
 	AS_HELP_STRING([--enable-tests],
 		[compile test programs]),
@@ -104,6 +112,7 @@ AC_ARG_ENABLE(tests,
 	)
 
 
+AM_CONDITIONAL([ENABLE_INTERNAL_PLUGINS],[test "$enable_internal_plugins" == "yes"] )
 AM_CONDITIONAL([ENABLE_TESTS], [test "$enable_tests" == "yes"])
 
 AC_CONFIG_FILES([Makefile

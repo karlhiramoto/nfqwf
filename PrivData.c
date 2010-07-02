@@ -10,7 +10,7 @@
 
 
 #include "PrivData.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 
 struct priv_data {
 	int key;
@@ -26,7 +26,7 @@ struct PrivData
 };
 
 
-/** Allocate new */
+/** Allocate new private data structure */
 struct PrivData *PrivData_new(void) {
 	struct PrivData *pd;
 	pd = calloc(1, sizeof(struct PrivData));
@@ -49,11 +49,18 @@ void PrivData_del(struct PrivData **pd_in) {
 		}
 	}
 	free(pd->priv_data_vec);
-
+	free(pd);
 	*pd_in = NULL;
 }
 
-
+/**
+*  @brief create new private data item
+*  @arg Private data struct
+*  @arg key Access control key to private data
+*  @arg size of data to allocate
+*  @arg free_fn  function to free the data.  may be free() or customized function
+*  @returns pointer to newly allocated data 
+*/
 void *PrivData_newData(struct PrivData* pd, int key, int size, void (*free_fn)(void *))
 {
 	void *data;
@@ -73,6 +80,12 @@ void *PrivData_newData(struct PrivData* pd, int key, int size, void (*free_fn)(v
 	return data;
 }
 
+/**
+*  @brief create new private data item
+*  @arg Private data struct
+*  @arg key Access control key to private data
+*  @returns pointer to data, or NULL if not found
+*/
 void *PrivData_getData(struct PrivData* pd, int key)
 {
 	int i;

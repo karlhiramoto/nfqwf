@@ -1,6 +1,7 @@
 #ifndef FILTER_OBJECT_LIST_H
 #define FILTER_OBJECT_LIST_H
 
+#include <stdbool.h>
 /**
 * @ingroup  Object
 * @defgroup FilterList FilterList. A list/vector of filters
@@ -16,9 +17,10 @@ void FilterList_del(struct FilterList **fl);
 
 struct FilterList* FilterList_addTail(struct FilterList *fl, struct Filter *fo);
 
-struct Filter* FilterList_searchObjId(struct FilterList *fl, int id);
+bool FilterList_contains(struct FilterList *fl, struct Filter *fo);
 
-struct Filter* FilterList_searchFilterId(struct FilterList *fl, int id);
+
+struct Filter* FilterList_searchFilterId(struct FilterList *fl, unsigned int id);
 
 unsigned int FilterList_count(struct FilterList *fl);
 

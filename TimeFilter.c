@@ -14,12 +14,12 @@
 #include "Filter.h"
 #include "FilterType.h"
 #include "HttpReq.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 #include "HttpConn.h"
 #define DAYS_IN_WEEK 7
 /**
 * @ingroup FilterObject
-* @defgroup TimeFilter Domain Filter Object
+* @defgroup TimeFilter Time Filter Object
 * @{
 */
 

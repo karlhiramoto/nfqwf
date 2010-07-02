@@ -22,9 +22,9 @@
 #include "FilterList.h"
 #include "Rules.h"
 #include "ContentFilter.h"
-#include "ProxyConfig.h"
+#include "WfConfig.h"
 #include "PrivData.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 
 #define MAX(a, b) (a > b ? a : b)
 #define MIN(a, b) (a < b ? a : b)
@@ -76,7 +76,7 @@ static struct HttpReq * __find_request(struct HttpConn *con, unsigned id)
 }
 
 
-struct HttpConn* HttpConn_new(struct ProxyConfig *config)
+struct HttpConn* HttpConn_new(struct WfConfig *config)
 {
 	struct HttpConn *con;
 
@@ -223,10 +223,18 @@ int __HttpConn_checkFlags(struct HttpConn* con, struct Ipv4TcpPkt *pkt,
 			break;
 		case TCP_CONNTRACK_SYN_RECV:
 		case TCP_CONNTRACK_ESTABLISHED:
-			if ( TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_RST) ||
-				TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_FIN)) {
+			if (TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_FIN)) {
 				next_tcp_state = TCP_CONNTRACK_LAST_ACK;
+			} else if (TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_RST)) {
+
+				if (TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_ACK)) {
+					// reset ACK
+					next_tcp_state = TCP_CONNTRACK_CLOSE;
+				} else {
+					next_tcp_state = TCP_CONNTRACK_LAST_ACK;
+				}
 			}
+				
 			break;
 		case TCP_CONNTRACK_FIN_WAIT:
 		case TCP_CONNTRACK_CLOSE_WAIT:
@@ -264,6 +272,9 @@ int __gen_error_packet(struct HttpReq *req, struct Ipv4TcpPkt *pkt,
 	const char *reason = "Access denied";
 
 	switch (verdict) {
+		case -1:
+			reason = "Web filter error";
+			break;
 		case Action_malware:
 		case Action_virus:
 			reason = "Malware or Virus";
@@ -285,9 +296,10 @@ int __gen_error_packet(struct HttpReq *req, struct Ipv4TcpPkt *pkt,
 		"</td></tr>\n"
 		"<tr><td>"
 		"<font style=\"font-size:0.6em; font-family: Verdana, Arial, Geneva, Helvetica, sans-serif; color:#0B384E\">"
-		"Reason: \"%s\".</font>"
+		"Reason: \"%s\". %s</font>"
 		"</td></tr></table>\n"
-		"</body></html>\r\n\r\n", reason);
+		"</body></html>\r\n\r\n", reason,
+		req->reject_reason ? req->reject_reason : "");
 
 	if (content_length < 1)
 		return -ENOMEM;
@@ -362,80 +374,12 @@ int __gen_error_packet(struct HttpReq *req, struct Ipv4TcpPkt *pkt,
 	return 0;
 }
 
-#if 0
-static int __get_next_line(char **lineptr, char *start, unsigned int *len)
-{
-	char *p = start;
-	unsigned int n = *len;
-	int count;
-
-	*lineptr = start; // init
-
-	if (n > 65535) {
-		ERROR_FATAL("length invalid %u\n", n);
-	}
-
-	// find end of this line
-	while (*p != '\r' && *p != '\n' && n != 0) {
-		p++;
-		n--;
-	}
-
-	*len = n;
-	
-	// if reached end of line but no more data 
-	if (n < 2) {
-		// if we ran out of buffer to parse
-		if (n == 0) {
-			count = ZERO_EOL;
-			goto out;
-		}
-
-		count = ONE_EOL;
-		goto out;
-	}
-	// at this point there is at least one EOL p points to a \r or \n
-
-	// There are now several cases we want to check
-	//  Case 0    \r\n    One EOL
-	//  Case     \n    One EOL
-	//  Case     \r    One EOL
-	//  Case     \r\n\r\n    TWO
-	//  Case     \n\r\n    TWO
-	//  Case     \n\n    TWO
-
-	if (*p == '\n') {
-		count = 1;
-	} else {
-		count = 0;
-	}
-
-	while ( (*p == '\r' || *p == '\n') && (n != 0) && count < 2 )  {
-		p++;
-		n--;
-		if (*p == '\n') {
-			count++;
-		}
-	}
-	DBG(6, "p=0x%hhx='%c' start='%c' count=%d n=%d\n", *p, *p, *start, count, n);
-	if (*p == '\n' && count == 2 && n != 0) {
-		// advance off end of line
-		p++;
-		n--;
-	}
-	
-	out:
-	*lineptr = p;
-	*len = n;
-	return count;
-}
-#endif
 
 static void __handle_non_http_pkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 {
 	enum non_http_action action;
 
-	action = ProxyConfig_getNonHttpAction(con->config);
+	action = WfConfig_getNonHttpAction(con->config);
 	DBG(4, "non HTTP action=%d payload len=%d\n", action,  pkt->tcp_payload_length);
 
 	switch (action) {
@@ -666,16 +610,7 @@ static int __processs_req_payload(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 			}
 
 			DBG(7, "p=0x%hhx len=%d\n", *p, len);
-#if 0
-			if (*p != '\n'&& *p != '\r' && len > 0)  {
-				ret = HttpReq_processHeaderLine(req, true, &p, &len);
 
-				if (ret == TWO_EOL) {
-					DBG(7, "End of request in packet with only one header line\n");
-					goto two_eol_found;
-				}
-			}
-#endif
 			while ( (ret = HttpReq_processHeaderLine(req, true, &p, &len)) == ONE_EOL && len > 0) {
 				// Processing request line by line
 			}
@@ -841,65 +776,7 @@ static int __processs_response_payload(struct HttpConn* con, struct Ipv4TcpPkt *
 
 		// fall through
 		case msg_state_partial:
-#if 0
-			while ( (ret = __get_next_line(&line, p, &len)) == ONE_EOL && len > 0) {
-				char test[16];
-				memcpy(test, line, MIN(len, sizeof(test)-1));
-				test[MIN(len, sizeof(test)-1)] = 0;
-				DBG(6, "read line='%s' remaining len=%d\n", test, len)
 
-				if (!msg->content_length &&
-					(p = memmem(line, MIN(len, 16), "Content-Length: ", 16))) {
-						// with POST/PUT requests there will be content length data part of the POST/PUT
-					p += 16;
-					len -= 16;
-					while (!isdigit(*p) && len > 0) {
-						p++;
-						len--;
-					}
-					end = p;
-					// should now be positioned on 1st digit
-					while (isdigit(*end) && len > 0) {
-						end++;
-						len--;
-					}
-					if (!len) {
-						msg->state = msg_state_partial;
-						DBG(1, "Partial request\n");
-						ERROR_FATAL("FIXME partial request\n");
-					}
-
-					// set len to be string length of content-length number
-					str_len = end - p;
-					if (str_len > 15) {
-						ERROR_FATAL("Bug parsing content-length\n");
-					}
-					memcpy(value_str, p, str_len);
-					value_str[str_len] = 0; // NULL term
-					msg->content_length = strtoull(value_str, NULL, 0);
-					
-					DBG(3, "Content length = %llu len=%d\n", msg->content_length, len);
-					p = end;  // continue at end of number,  len is already updated.
-				} else if (!msg->content_length &&
-					(p = memmem(line, MIN(len, 11), "Location: ", 10))) {
-					
-					p += 10;
-					len -= 10;
-					DBG(3, "Goto new location, response done\n");
-
-				} else {
-					// just advance to next line
-					p = line;
-				}
-			} // while each line
-
-			if (ret == TWO_EOL) {
-				DBG(3, "CRLF response headers complete len=%d\n", len);
-				msg->state = msg_state_read_content;
-				goto response_hdr_complete;
-			}
-			msg->state = msg_state_partial;
-#endif
 			// check if we have left over data from previous packet to parse
 			if (unlikely(msg->buf_line != NULL)) {
 				DBG(6, "Data from previous packet to parse %d bytes \n", msg->buf_line_len);
@@ -963,28 +840,7 @@ static int __processs_response_payload(struct HttpConn* con, struct Ipv4TcpPkt *
 			if (ret == TWO_EOL) {
 				DBG(3, "CRLFCRLF response headers complete len=%d req_len=%llu recieved=%lld\n",
 					len, msg->content_length, msg->content_received);
-#if 0
-				if (msg->content_length) {
-					msg->content_received += len;
-					
-					// +1 because is remaining length and must include this byte
-/*					if (len)
-						msg->content_received++;*/
-					
-					msg->state = msg_state_read_content;
 
-					if (msg->content_received >= msg->content_length) {
-						DBG(5, "POST/PUT/OPTIONS request content finished received=%llu Content-length=%llu\n",
-							msg->content_received, msg->content_length);
-
-							goto response_hdr_complete;
-					}
-					break;
-				} else if (msg->chunked) {
-
-					msg->state = msg_state_read_content;
-				}
-#endif
 				goto response_hdr_complete;
 			} else if (ret == ONE_EOL) {
 				// NOTE there is a small possibility that the CRLFCRLF is fragmented across two packets
@@ -1019,9 +875,15 @@ static int __processs_response_payload(struct HttpConn* con, struct Ipv4TcpPkt *
 
 		case msg_state_read_content:
 			DBG(1, "Recieving  msg_state_read_content\n");
-			HttpReq_consumeResponseContent(req, p, len);
+			verdict = HttpReq_consumeResponseContent(req, p, len);
 
-			//FIXME  if the payload is more than the content length, the may contain another request. 
+			//FIXME  if the payload is more than the content length, the may contain another request.
+
+			if (verdict && (Action_malware | Action_reject | Action_virus | Action_phishing)){
+				DBG(3, "Generate error msg for bad content verdict = 0x%x\n", verdict);
+				__gen_error_packet(req, pkt, verdict);
+				return 0;
+			}
 
 		break;
 		case msg_state_complete:
@@ -1040,7 +902,7 @@ static int __processs_response_payload(struct HttpConn* con, struct Ipv4TcpPkt *
 	verdict = HttpReq_consumeResponseContent(req, p, len);
 
 	if (verdict && (Action_malware | Action_reject | Action_virus | Action_phishing)){
-		DBG(3, "Generate error msg for bad content\n");
+		DBG(3, "Generate error msg for bad content verdict = 0x%x\n", verdict);
 		__gen_error_packet(req, pkt, verdict);
 		return 0;
 	}
@@ -1084,6 +946,7 @@ static int __processs_response_payload(struct HttpConn* con, struct Ipv4TcpPkt *
 	return 0;
 }
 
+#if 0
 static int __processs_pkt_payload(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 {
 	int ret = 0;
@@ -1092,40 +955,40 @@ static int __processs_pkt_payload(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 		con->cur_request, con->cur_response);
 
 	if (__pkt_from_client(pkt)) {
-		if (con->server_data_altered) {
-			// adjust client ACK number
-			pkt->ack_num = htonl(con->client_seq_num);
-			con->server_seq_num += pkt->tcp_payload_length;
-			DBG(5, "Change client ack to %d\n", ntohl(pkt->ack_num));
-			memcpy(&pkt->ip_data[pkt->ip_hdr_len+8],&pkt->ack_num, sizeof(int));
-
-			Ipv4TcpPkt_resetTcpCon(pkt);
-		} else {
+// 		if (con->server_data_altered) {
+// 			// adjust client ACK number
+// 			pkt->ack_num = htonl(con->client_seq_num);
+// 			con->server_seq_num += pkt->tcp_payload_length;
+// 			DBG(5, "Change client ack to %d\n", ntohl(pkt->ack_num));
+// 			memcpy(&pkt->ip_data[pkt->ip_hdr_len+8],&pkt->ack_num, sizeof(int));
+// 
+// 			Ipv4TcpPkt_resetTcpCon(pkt);
+// 		} else {
 			ret = __processs_req_payload(con, pkt);
-		}
+// 		}
 		
 	} else if (__pkt_from_server(pkt)) {
-		if (con->server_data_altered) {
-			// adjust client ACK number
-			pkt->ack_num = htonl(con->server_seq_num);
-			con->server_seq_num += pkt->tcp_payload_length;
-			DBG(5, "Change server/client ack to %d\n", ntohl(pkt->ack_num));
-			memcpy(&pkt->ip_data[pkt->ip_hdr_len+8],&pkt->ack_num, sizeof(int));
-			Ipv4TcpPkt_resetTcpCon(pkt);
-		} else {
+// 		if (con->server_data_altered) {
+// 			// adjust client ACK number
+// 			pkt->ack_num = htonl(con->server_seq_num);
+// 			con->server_seq_num += pkt->tcp_payload_length;
+// 			DBG(5, "Change server/client ack to %d\n", ntohl(pkt->ack_num));
+// 			memcpy(&pkt->ip_data[pkt->ip_hdr_len+8],&pkt->ack_num, sizeof(int));
+// 			Ipv4TcpPkt_resetTcpCon(pkt);
+// 		} else {
 			ret = __processs_response_payload(con, pkt);
-		}
+// 		}
 	} else {
 		ERROR_FATAL("Invalid packet not from client or server. broken. \n");
 		return -EINVAL;
 	}
 	return 0;
 }
+#endif
 
 static int __pkt_list_process(struct HttpConn* con, ipv4_tcp_pkt_list_t *pkt_list)
 {
 	struct Ipv4TcpPkt *next_pkt;
-// 	struct Ipv4TcpPkt *cur_pkt = NULL;
 	int ret = 0;
 	
 	
@@ -1189,7 +1052,12 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 			con->server_seq_num, pkt->seq_num, delta);
 		
 		if (pkt->tcp_payload_length) {
-
+			
+			if (unlikely(con->server_data_altered)) {
+				DBG(5, "Drop packet from server on modified connection \n");
+				Ipv4TcpPkt_setNlVerictDrop(pkt);
+				return MIN(con->server_state, con->client_state);
+			}
 			//if packet already seen
 			if (delta < 0
 				&& (con->server_seq_num < TCP_SEQ_HI_WRAPZONE)) {
@@ -1203,7 +1071,8 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 			} else {
 				con->server_seq_num = pkt->seq_num + pkt->tcp_payload_length;
 				con->server_ack_num = pkt->ack_num;
-				__processs_pkt_payload(con, pkt);
+// 				__processs_pkt_payload(con, pkt);
+				__processs_response_payload(con, pkt);
 
 			}
 		}
@@ -1218,9 +1087,21 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 
 
 	} else {
+		// packet from client 
 		delta = (int) (pkt->seq_num - con->client_seq_num);
 		DBG(5, "Pkt from client  client_seq_num=%u  pkt_seq_num=%u delta=%d\n"
 		, con->client_seq_num, pkt->seq_num, delta);
+
+
+		if (unlikely(con->server_data_altered
+			&& (con->client_state < TCP_CONNTRACK_CLOSE_WAIT)
+ 			&&	!TCP_FLAG_SET(pkt, pkt->ip_hdr_len + TCP_FLAG_OFFSET,
+					(TCP_FLAG_FIN | TCP_FLAG_RST)) ) ) {
+			DBG(5, "reset connection with packet from client on modified connection \n");
+			Ipv4TcpPkt_resetTcpCon(pkt);
+			return MIN(con->server_state, con->client_state);
+		}
+
 		if (pkt->tcp_payload_length) {
 		
 			//if packet already seen
@@ -1235,7 +1116,8 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 			} else {
 				con->client_seq_num = pkt->seq_num + pkt->tcp_payload_length;
 				con->client_ack_num = pkt->ack_num;
-				__processs_pkt_payload(con, pkt);
+// 				__processs_pkt_payload(con, pkt);
+				__processs_req_payload(con, pkt);
 			}
 		}
 		DBG(5, "Pkt from client  client_seq_num=%u  pkt_seq_num=%u delta=%d\n"
@@ -1245,22 +1127,9 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 		__pkt_list_process(con, con->client_buffer);
 	}
 
-DBG(5, " Server state=%d ; client state = %d  client_seq_num= %u server_seq_num= %u\n",
-	con->server_state, con->client_state,  con->client_seq_num, con->server_seq_num);
-#if 0	
-	if (pkt->tcp_payload_length) {
-		if (con->server_data_altered) {
-// 			Ipv4TcpPkt_setTcpFlag(pkt, TCP_FLAG_RST); // set FIN
-// 			Ipv4TcpPkt_clearTcpFlag(pkt, TCP_FLAG_PSH); // clear data flag
-// 			Ipv4TcpPkt_resetTcpCksum(pkt->ip_data, pkt->ip_packet_length, pkt->ip_hdr_len);
-// 			pkt->modified_ip_data = pkt->ip_data; // mark modified
-		} else
-			__processs_pkt_payload(con, pkt);
-	} else {
-		DBG(5, " skip process packet. no payload \n");
-	}
-#endif
-	
+	DBG(5, " Server state=%d ; client state = %d  client_seq_num= %u server_seq_num= %u\n",
+		con->server_state, con->client_state,  con->client_seq_num, con->server_seq_num);
+
 	min_state = MIN(con->server_state, con->client_state);
 
 	// if safe to close and cleanup memory
@@ -1270,37 +1139,4 @@ DBG(5, " Server state=%d ; client state = %d  client_seq_num= %u server_seq_num=
 
 	return min_state;
 }
-
-#if 0
-void *HttpConn_newPrivData(struct HttpConn* con, int key, int size, void (*free_fn)(void *))
-{
-	void *data;
-
-	//NOTE we could check if the key already exists, but that would just slow us down,
-	// this would become O(N) where N is number of priv data.   Now we are O(1)
-
-	con->priv_data_vec = realloc(con->priv_data_vec,
-		(con->priv_data_count+2) * sizeof(struct priv_data*));
-	con->priv_data_vec[con->priv_data_count] = calloc(1, sizeof(struct priv_data));
-	data = con->priv_data_vec[con->priv_data_count]->data = calloc(1, size);
-	con->priv_data_vec[con->priv_data_count]->key = key;
-	con->priv_data_vec[con->priv_data_count]->free_fn = free_fn;
-	con->priv_data_count++;
-	con->priv_data_vec[con->priv_data_count] = NULL; // NULL term
-	return data;
-}
-
-void *HttpConn_getPrivData(struct HttpConn* con, int key)
-{
-	int i;
-
-	for (i = 0; i < con->priv_data_count; i++) {
-		if (con->priv_data_vec[i] && con->priv_data_vec[i]->key == key) {
-			DBG(5, "found data with key %d=0x%08x\n", key, key);
-			return con->priv_data_vec[i]->data;
-		}
-	}
-	return NULL;
-}
-#endif
 

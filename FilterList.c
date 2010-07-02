@@ -4,7 +4,7 @@
 #include "FilterList.h"
 
 // #include "Filter_list.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 
 
 
@@ -41,12 +41,13 @@ void FilterList_del(struct FilterList **fl_in)
 
 struct FilterList* FilterList_addTail(struct FilterList *fl, struct Filter *fo)
 {
+	DBG(5, "Adding new object %p to list %p\n", fo, fl);
+
 	fl->list = realloc(fl->list, (sizeof(struct Filter *) * (fl->count+2)));
-	
+
 	if (!fl)
 		return NULL;
 
-	DBG(5, "Add new object %p to list %p count =%d \n", fo, fl, fl->count);
 
 	Filter_get(fo);
 	fl->list[fl->count] = fo;
@@ -56,13 +57,18 @@ struct FilterList* FilterList_addTail(struct FilterList *fl, struct Filter *fo)
 	return fl;
 }
 
-struct Filter* FilterList_searchObjId(struct FilterList *fl, int id)
+/**return true if the FilterList contains Filter, else return false */
+bool FilterList_contains(struct FilterList *fl, struct Filter *fo)
 {
-	//TODO
-	return NULL;
+	unsigned int i;
+	for (i= 0; i < fl->count ; i++) {
+		if (fl->list[i] == fo)
+			return true;
+	}
+	return false;
 }
 
-struct Filter* FilterList_searchFilterId(struct FilterList *fl, int id)
+struct Filter* FilterList_searchFilterId(struct FilterList *fl, unsigned int id)
 {
 	int i;
 

@@ -2,6 +2,7 @@
 #define HTTP_REQ_H 1
 
 #include <stdbool.h>
+#include <sys/time.h>
 #include <ubiqx/ubi_dLinkList.h>
 #include "Ipv4Tcp.h"
 #include "Rules.h"
@@ -72,17 +73,20 @@ struct HttpReq {
 	char *host;
 	char *path;
 	char *url; /** combine host and path, without http://  so will be host/path */
+	struct timeval start_time; /** time the request started */
 	struct http_msg client_req_msg;  /// data coming from client HTTP Request
 	struct http_msg server_resp_msg;  /// data coming from server HTTP response
 	
 	/// NOTE  consider putting virus, phishing, malware, category, etc
 	/// into some kind of attributes list,
 	/// and each filter object can set the attributes it wants.
-	enum Action verdict; /// reject, virus, Phishing, malware, etc
-	int rule_matched; // ID of rule that was matched
+//	enum Action verdict; /// reject, virus, Phishing, malware, etc
+	struct Rule *rule_matched; /// rule that was matched
 	int category_id[HTTP_REQ_MAX_CATEGORY_IDS];
 	char *reject_reason; /* virus name, or other reason to reject */
-	FILE *file_scan;
+	char *category_name;
+	int file_scan_fd;
+	char *file_scan_tmpfile;
 	struct ContentFilter *cf; /* content filter object */
 	/// Private data that a filter object may request, will allow different filter objects to share data.
 	/// Or it allows a filter object to save its state between request states
@@ -105,7 +109,9 @@ int HttpReq_processHeaderLine(struct HttpReq *req, bool client_req,
 int HttpReq_consumeResponseContent(struct HttpReq *req, const unsigned char *data,
 	unsigned int len);
 
+void HttpReq_setRuleMatched(struct HttpReq *req, struct Rule *r);
 void HttpReq_setRejectReason(struct HttpReq *req, const char *reason);
+void HttpReq_setCatName(struct HttpReq *req, const char *name);
 
 /** @}  */
 

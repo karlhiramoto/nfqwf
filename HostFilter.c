@@ -14,7 +14,7 @@
 #include "Filter.h"
 #include "FilterType.h"
 #include "HttpReq.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 #include "HttpConn.h"
 #include "PrivData.h"
 

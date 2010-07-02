@@ -3,17 +3,8 @@
 #include "nfq-web-filter-config.h"
 #endif
 
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-#include <stdio.h>
-
-
-
-/** Allocate new */
 struct PrivData *PrivData_new(void);
 
-/** Release memory */
 void PrivData_del(struct PrivData **pd_in);
 
 

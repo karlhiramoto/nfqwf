@@ -14,7 +14,7 @@
 #include "FilterType.h"
 #include "HttpReq.h"
 #include "HttpConn.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 
 /**
 * @ingroup FilterObject
@@ -22,6 +22,10 @@
 * @{
 */
 
+/**
+* @struct IpFilter
+* @brief Data used to create filters for source or destination IP addresses.
+*/
 struct IpFilter
 {
 	/** Base class members */
@@ -38,21 +42,12 @@ struct IpFilter
 };
 
 
-/** To clone any private data*/
-static int IpFilter_clone(struct Filter *dst, struct Filter *src)
-{
-	return 0;
-}
-
-static int IpFilter_constructor(struct Filter *fobj)
-{
-	return 0;
-}
-
 #define ADDR_STR "address"
 #define MASK_STR "mask"
 
-// FIXME  for quick prototype use char * later use real XML
+/**
+* @brief load filter definition from XML config
+*/
 static int IpFilter_load_from_xml(struct Filter *fobj, xmlNode *node)
 {
 	int ret;
@@ -121,15 +116,15 @@ static int IpFilter_matches_req(struct Filter *fobj, struct HttpReq *req)
 	return 0;
 }
 
+/** Object definitions */
 static struct Object_ops obj_ops = {
 	.obj_type           = "filter/ip",
 	.obj_size           = sizeof(struct IpFilter),
 };
 
+/** filter callbacks */
 static struct Filter_ops IpFilter_obj_ops = {
 	.ops                = &obj_ops,
-	.foo_constructor	= IpFilter_constructor,
-	.foo_clone          = IpFilter_clone,
 	.foo_load_from_xml  = IpFilter_load_from_xml,
 	.foo_matches_req    = IpFilter_matches_req,
 };

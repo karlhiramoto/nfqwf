@@ -3,29 +3,30 @@
 #include "nfq-web-filter-config.h"
 #endif
 
+#define _GNU_SOURCE
+
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
 
-#include "ProxyConfig.h"
-#include "FilterType.h"
-#include "FilterList.h"
-#include "Rules.h"
+#include "WfConfig.h"
 #include "ContentFilter.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 
 /**
 * @ingroup Object
-* @defgroup ProxyConfig ProxyConfig. Main configuration object
+* @defgroup WfConfig WfConfig. Main configuration object
 * @{
 */
 
 
-struct ProxyConfig
+struct WfConfig
 {
 	/** Base objects member variables */
 	OBJECT_COMMON;
@@ -35,11 +36,14 @@ struct ProxyConfig
 	uint16_t low_queue_num;     /**<  Low queue ID*/
 	uint16_t high_queue_num;    /**<  High queue ID */
 	enum non_http_action non_http_action;
-	/** Is anti virus scan active, if true, and content length less
-	   than skip size, then save file */
-	bool av_active;
-	unsigned int av_skip_size;  /**< Only scan files small then skip size */
-	char *error_page;           /**<  */
+	/** Is anti virus scan active, only up to max file filter size may
+		be scanned otherwise skip file scan */
+	unsigned int max_filtered_file_size;
+
+	char *tmp_dir; /* where to store tmp files if AV file scan active */
+
+	/// TODO a configurable error page.
+	char *error_page;
 	struct ContentFilter *cf; /* content filter object */
 };
 
@@ -49,14 +53,14 @@ struct ProxyConfig
 */
 
 /** Get a reference counter */
-void ProxyConfig_get(struct ProxyConfig *conf) {
+void WfConfig_get(struct WfConfig *conf) {
 	Object_get((struct Object*) conf);
-	DBG(4, "New reference to ProxyConfig %p refcount = %d\n",
+	DBG(4, "New reference to WfConfig %p refcount = %d\n",
 		conf, conf->refcount);
 }
 
 /** Release reference counter */
-void ProxyConfig_put(struct ProxyConfig **conf) {
+void WfConfig_put(struct WfConfig **conf) {
 	
 	DBG(4, "removing Config reference to %p refcount = %d\n",
 		*conf, (*conf)->refcount);
@@ -75,9 +79,9 @@ void ProxyConfig_put(struct ProxyConfig **conf) {
 *  Objects constructor
 *  @arg Object that was just allocated
 */
-int ProxyConfig_constructor(struct Object *obj)
+int WfConfig_constructor(struct Object *obj)
 {
-	struct ProxyConfig *config = (struct ProxyConfig *)obj;
+	struct WfConfig *config = (struct WfConfig *)obj;
 	DBG(5, " constructor %p\n", config);
 	config->cf = ContentFilter_new();
 	return 0;
@@ -88,11 +92,14 @@ int ProxyConfig_constructor(struct Object *obj)
 *  Objects destructor
 *  @arg Object that is going to be free'd
 */
-int ProxyConfig_destructor(struct Object *obj)
+int WfConfig_destructor(struct Object *obj)
 {
-	struct ProxyConfig *conf = (struct ProxyConfig *)obj;
+	struct WfConfig *conf = (struct WfConfig *)obj;
 	DBG(5, " destructor %p\n", conf);
 	ContentFilter_put(&conf->cf);
+
+	if (conf->tmp_dir)
+		free(conf->tmp_dir);
 
 	return 0;
 }
@@ -100,39 +107,41 @@ int ProxyConfig_destructor(struct Object *obj)
 /** @} */
 
 static struct Object_ops obj_ops = {
-	.obj_type           = "ProxyConfig",
-	.obj_size           = sizeof(struct ProxyConfig),
-	.obj_constructor    = ProxyConfig_constructor,
-	.obj_destructor     = ProxyConfig_destructor,
+	.obj_type           = "WfConfig",
+	.obj_size           = sizeof(struct WfConfig),
+	.obj_constructor    = WfConfig_constructor,
+	.obj_destructor     = WfConfig_destructor,
 	
 };
 
-static struct ProxyConfig* ProxyConfig_alloc(struct Object_ops *ops)
+static struct WfConfig* WfConfig_alloc(struct Object_ops *ops)
 {
-	struct ProxyConfig *conf;
+	struct WfConfig *conf;
 
-	conf = (struct ProxyConfig*) Object_alloc(ops);
+	conf = (struct WfConfig*) Object_alloc(ops);
 
 	return conf;
 }
 
 
-struct ProxyConfig* ProxyConfig_new(void)
+struct WfConfig* WfConfig_new(void)
 {
-	return ProxyConfig_alloc(&obj_ops);
+	return WfConfig_alloc(&obj_ops);
 }
 
 
 //TODO pass XML arg, or filename
-int ProxyConfig_loadConfig(struct ProxyConfig* conf, const char *config_xml_file)
+int WfConfig_loadConfig(struct WfConfig* conf, const char *config_xml_file)
 {	
 	int ret;
 	xmlDoc *doc = NULL;
 	xmlNode *root_node = NULL;
 	xmlChar *prop = NULL;
+	struct stat tmp_dir_stat;
+	char *cmd;
 	
 	if (!config_xml_file) {
-		DBG(1, "Invalid config file\n");
+		ERROR("Invalid config file\n");
 		return -EINVAL;
 	}
 
@@ -173,7 +182,45 @@ int ProxyConfig_loadConfig(struct ProxyConfig* conf, const char *config_xml_file
 		}
 		xmlFree(prop);
 	}
+	prop = xmlGetProp(root_node, BAD_CAST "max_filtered_file_size");
+	if (prop) {
+		conf->max_filtered_file_size = atoi((const char*)prop);
+		xmlFree(prop);
+	} else {
+		conf->max_filtered_file_size = 1024*1024;
+	}
 
+	prop = xmlGetProp(root_node, BAD_CAST "tmp_dir");
+	if (prop) {
+		conf->tmp_dir = strdup((const char*)prop);
+		xmlFree(prop);
+	} else {
+		conf->tmp_dir = strdup("/tmp");
+	}
+	ret = stat(conf->tmp_dir, &tmp_dir_stat);
+	if (ret) {
+		DBG(1, "tmp dir '%s' may not exist trying to create\n", conf->tmp_dir);
+		ret = asprintf(&cmd, "mkdir -p %s", conf->tmp_dir);
+		if (ret == -1) {
+			ERROR("asprintf for dir '%s' \n", conf->tmp_dir);
+		} else {
+			ret = system(cmd);
+			if (ret) {
+				ERROR("trying to create dir '%s' err=%d=%m\n", cmd, errno);
+			}
+		}
+
+		if (cmd)
+			free(cmd);
+
+		ret = stat(conf->tmp_dir, &tmp_dir_stat);
+		if (ret == -1) {
+			ERROR("checking tmp dir '%s' err=%d=%m\n", conf->tmp_dir, errno);
+		}
+	}
+
+	DBG(1, "max file filter=%d  tmp_dir='%s'\n",
+		conf->max_filtered_file_size, conf->tmp_dir);
 	ret = ContentFilter_loadConfig(conf->cf, root_node->children);
 	if (ret) {
 		DBG(1, "Error loading filter config");
@@ -192,7 +239,7 @@ int ProxyConfig_loadConfig(struct ProxyConfig* conf, const char *config_xml_file
 }
 
 //TODO  think about making this and other one liners a static inline in the .h 
-struct ContentFilter * ProxyConfig_getContentFilter(struct ProxyConfig* conf)
+struct ContentFilter * WfConfig_getContentFilter(struct WfConfig* conf)
 {
  	if (!conf) {
 		ERROR_FATAL("Invalid config obj\n");
@@ -201,29 +248,38 @@ struct ContentFilter * ProxyConfig_getContentFilter(struct ProxyConfig* conf)
 	return conf->cf;
 }
 
-uint16_t ProxyConfig_getHighQNum(struct ProxyConfig* conf) {
+uint16_t WfConfig_getHighQNum(struct WfConfig* conf) {
 	return conf->high_queue_num;
 }
 
-uint16_t ProxyConfig_getLowQNum(struct ProxyConfig* conf) {
+uint16_t WfConfig_getLowQNum(struct WfConfig* conf) {
 	return conf->low_queue_num;
 }
-void ProxyConfig_setHighQNum(struct ProxyConfig* conf, uint16_t num) {
+void WfConfig_setHighQNum(struct WfConfig* conf, uint16_t num) {
 	conf->high_queue_num = num;
 }
 
-void ProxyConfig_setLowQNum(struct ProxyConfig* conf, uint16_t num) {
+void WfConfig_setLowQNum(struct WfConfig* conf, uint16_t num) {
 	conf->low_queue_num = num;
 }
 
+unsigned int WfConfig_getMaxFiltredFileSize(struct WfConfig* conf) {
+	return conf->max_filtered_file_size;
+}
+
+
 #if 0
-void ProxyConfig_setNonHttpAction(struct ProxyConfig* conf, enum non_http_action action) {
+void WfConfig_setNonHttpAction(struct WfConfig* conf, enum non_http_action action) {
 	conf->non_http_action = action;
 }
 #endif
 
-enum non_http_action ProxyConfig_getNonHttpAction(struct ProxyConfig* conf) {
+enum non_http_action WfConfig_getNonHttpAction(struct WfConfig* conf) {
 	return conf->non_http_action;
+}
+
+const char *WfConfig_getTmpDir(struct WfConfig* conf) {
+	return conf->tmp_dir;
 }
 
 /** @} */

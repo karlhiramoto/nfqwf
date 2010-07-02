@@ -70,9 +70,10 @@ linux iptables NF_QUEUE.
 #include "nfq-web-filter-config.h"
 #endif
 
-#include "ProxyConfig.h"
-#include "NfqProxy.h"
-#include "nfq_proxy_private.h"
+#include "WfConfig.h"
+#include "NfQueue.h"
+#include "FilterType.h"
+#include "nfq_wf_private.h"
 
 
 /**
@@ -83,7 +84,7 @@ linux iptables NF_QUEUE.
 
 
 /**Current configuration */
-static struct ProxyConfig *conf = NULL;
+static struct WfConfig *conf = NULL;
 static bool keep_running = true;
 static int exit_pipe[2] = { 0, 0};
 static char *pid_file = NULL;
@@ -91,8 +92,8 @@ static char *config_file = NULL;
 static int low_q = 1;
 static int high_q = 2;
 
-/** vector of NfqProxy */
-struct NfqProxy **nfq_proxy;
+/** vector of pointers to NfQueue */
+struct NfQueue **nfq_wf;
 
 int debug_level = 0;
 
@@ -100,7 +101,7 @@ int debug_level = 0;
 static void sig_HUP_Handler(int sig)
 {
 	int ret;
-	struct ProxyConfig *new_conf;
+	struct WfConfig *new_conf;
 	int i;
 
 	DBG(1," reload config sig=%d pid=%d thread=%d\n",
@@ -110,27 +111,27 @@ static void sig_HUP_Handler(int sig)
 		WARN("No config file arg specified to reload\n");
 		return;
 	}	
-	new_conf = ProxyConfig_new();
-	ret = ProxyConfig_loadConfig(new_conf, config_file);
+	new_conf = WfConfig_new();
+	ret = WfConfig_loadConfig(new_conf, config_file);
 
 	if (ret) {
 		DBG(1,"Error loading new config '%s' ret=%d\n", config_file, ret);
-		ProxyConfig_put(&new_conf);
+		WfConfig_put(&new_conf);
 		return;
 	}
 
 	conf = new_conf;
 
-	for(i = 0; nfq_proxy && nfq_proxy[i]; i++) {
+	for(i = 0; nfq_wf && nfq_wf[i]; i++) {
 		DBG(1," reloading config in thread %d\n", i);
-		NfqProxy_updateConfig(nfq_proxy[i], conf);
+		NfQueue_updateConfig(nfq_wf[i], conf);
 	}
 	DBG(1," Finished SIG HUP reload config\n");
 }
 
 static void sig_PIPE_Handler(int sig)
 {
-	//fixme this is for testing
+	//FIXME this is for testing
 	ERROR_FATAL("SIG PIPE received \n\n");
 }
 
@@ -238,18 +239,21 @@ static int pidfile_chk(const char *pidfile) {
 
 static void print_help(void)
 {
-	printf(" Usage opts :   [ -d ] [-v | -v N] < -c config.xml >  [ -p /tmp/pid-file.pid ]  \n");
+	printf(" Usage opts :   [ -d ] [-v | -v N] < -c config.xml >  [ -p /tmp/pid-file.pid ] [ -L/path ] \n");
 	printf(" -h      this help\n");
 	printf(" -v      verbose\n");
 	printf(" -v N    verbose level N (0-9)\n");
 	printf(" -d      daemonize\n");
 	printf(" -c      config file\n");
+	printf(" -L      Plugin library path. May be specified multiple times.\n");
+	printf("             Path may be relative or absolute but must start with '/'\n" );
+	printf("             Default path %s checked last if not found before\n", DATADIR);
 	printf(" -p      pid file\n");
-	printf(" -q N    Low queue number. The value you pass to");
-	printf("               iptables --queue-num or --queue-balance q:Q\n");
-	printf("               Default value 1 \n");
+	printf(" -q N    Low queue number. The value you pass to iptables.\n");
+	printf("             iptables --queue-num or --queue-balance q:Q\n");
+	printf("             Default value 1 \n");
 	printf(" -Q N    High queue number.  The higher number in --queue-balance q:Q\n");
-	printf("               Default value is low queue number \n");
+	printf("             Default value is low queue number \n");
 	printf("\n");
 }
 
@@ -260,7 +264,7 @@ static int parse_opt (int argc, char *argv[])
 	bool high_q_set = false;
 	bool low_q_set = false;
 	
-	while ((option = getopt(argc, argv, "c:dhp:Q:q:v::")) != -1)
+	while ((option = getopt(argc, argv, "c:dhL:p:Q:q:v::")) != -1)
 	{
 		switch (option)
 		{
@@ -279,6 +283,12 @@ static int parse_opt (int argc, char *argv[])
 			case 'h':
 				print_help();
 				exit(0);
+				break;
+			case 'L':
+				if (!optarg || optarg[0] != '/') {
+					ERROR_FATAL("Plugin path must start with '/'\n");
+				}
+				FilterType_addLibPath(optarg);
 				break;
 			case 'v':	// verbose mode
 				debug_level = 1;
@@ -346,7 +356,7 @@ int main(int argc, char *argv[])
 
 	openlog(PROG_NAME, LOG_PID, LOG_DAEMON);
 
-	PRINT("Version %s Compiled %s %s\n", VERSION_STR, __DATE__, __TIME__);
+	PRINT("Version %s Compiled %s %s\n", VERSION, __DATE__, __TIME__);
 	if (argc < 2) {
 		print_help();
 		return -1;
@@ -364,12 +374,12 @@ int main(int argc, char *argv[])
 			ERROR_FATAL("Error creating pidfile\n");
 		}
 	}
-	conf = ProxyConfig_new();
+	conf = WfConfig_new();
 
 
 	//TODO parse argv argc and put in conf
-	ProxyConfig_setHighQNum(conf, high_q);
-	ProxyConfig_setLowQNum(conf, low_q);
+	WfConfig_setHighQNum(conf, high_q);
+	WfConfig_setLowQNum(conf, low_q);
 
 	/* setup sig handler to reload config */
 	signal(SIGHUP, sig_HUP_Handler);
@@ -379,7 +389,11 @@ int main(int argc, char *argv[])
 
 	signal(SIGPIPE, sig_PIPE_Handler);
 
-	ret = ProxyConfig_loadConfig(conf, config_file);
+	ret = WfConfig_loadConfig(conf, config_file);
+	if (ret < 0) {
+		ERROR("Invalid config file\n");
+		return 1;
+	}
 
 	cache_ctx = init_libnl_cache();
 
@@ -390,14 +404,14 @@ int main(int argc, char *argv[])
 	}
 	num_queues++;
 
-	nfq_proxy = calloc(1, (sizeof(struct NfqProxy *) * ((num_queues) + 1)));
+	nfq_wf = calloc(1, (sizeof(struct NfQueue *) * ((num_queues) + 1)));
 	for(i = 0; i < num_queues; i++) {
 		DBG(1," start thread %d\n", i);
- 		nfq_proxy[i] = NfqProxy_new(i + low_q, conf);
-		NfqProxy_start(nfq_proxy[i]);
+ 		nfq_wf[i] = NfQueue_new(i + low_q, conf);
+		NfQueue_start(nfq_wf[i]);
 	}
 	// done loading config into each thread so put back reference
-	ProxyConfig_put(&conf);
+	WfConfig_put(&conf);
 
 	ret = pipe(exit_pipe);
 	if (ret) {
@@ -444,17 +458,17 @@ int main(int argc, char *argv[])
 	DBG(1," Stopping %d threads\n", num_queues);
 	/* tell threads to stop */
 	for(i = 0; i < num_queues; i++) {
-		NfqProxy_stop(nfq_proxy[i]);
+		NfQueue_stop(nfq_wf[i]);
 	}
 
 	for(i = 0; i < num_queues; i++) {
 		DBG(1," Join thread %d\n", i);
-		NfqProxy_join(nfq_proxy[i]);
-		NfqProxy_put(&nfq_proxy[i]);
+		NfQueue_join(nfq_wf[i]);
+		NfQueue_put(&nfq_wf[i]);
 	}
 
 	cleanup_libnl_cache(cache_ctx);
-	free(nfq_proxy);
+	free(nfq_wf);
 
 	if (config_file) {
 		free(config_file);

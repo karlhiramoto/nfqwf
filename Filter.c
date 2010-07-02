@@ -7,7 +7,7 @@
 
 
 #include "Filter.h"
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 
 /**
 * @ingroup FilterObject
@@ -136,8 +136,9 @@ int Filter_fromXml(struct Filter *fo, xmlNode *node)
 {
 	xmlChar *prop = NULL;
 	struct Filter_ops *ops = get_fobj_ops(fo);
-	int id;
-	
+	unsigned int id;
+	int ret;
+
 	if (!ops->foo_load_from_xml) {
 		DBG(1, "Invalid object does not have load XML operation\n");
 		return -EINVAL;
@@ -150,9 +151,12 @@ int Filter_fromXml(struct Filter *fo, xmlNode *node)
 		return -1;
 	}
 
-	id = atoi((char *)prop);
+	ret = sscanf((char *) prop, "%u", &id);
+	if (ret < 1) {
+		ERROR(" Parsing %s\n", FILTER_ID_XML_PROP);
+	}
 	Filter_setFilterId(fo, id);
-	DBG(5, " %s = %s = %d = %d\n", FILTER_ID_XML_PROP, prop, Filter_getFilterId(fo), id);
+	DBG(5, " %s = %s = %u = %u\n", FILTER_ID_XML_PROP, prop, Filter_getFilterId(fo), id);
 
 	xmlFree(prop);
 

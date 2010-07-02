@@ -7,7 +7,7 @@
 
 #include <libxml/tree.h>
 
-#include "nfq_proxy_private.h"
+#include "nfq_wf_private.h"
 #include "Object.h" // generic object
 
 
@@ -18,7 +18,7 @@
 */
 #define FILTER_OBJECT_COMMON \
 OBJECT_COMMON; \
-int filter_id; \
+unsigned int filter_id; \
 struct Filter_ops *fo_ops; \
 
 /**
@@ -73,7 +73,7 @@ struct Filter_ops
 	int (*foo_request_start)(struct Filter *obj, struct HttpReq *);
 
 	/** @brief Check if filter object matches request
-	    This is called when request comes back from server.
+	    This is called when the 1st packet of the request comes back from server.
 	    @param obj   This filter object
 	    @param HttpReq Http Request we are going to filter
 	    @returns 1 on match, 0 no match, or -errno
@@ -81,14 +81,21 @@ struct Filter_ops
 	int (*foo_matches_req)(struct Filter *obj, struct HttpReq *);
 
 
+	// filter for AV or other kind of filter on data stream
 	int (*foo_stream_filter)(struct Filter *obj, struct HttpReq *,
 			const unsigned char *data_stream, unsigned int length);
+
 	
-	// FIXME some kind of filter for AV
+	/**
+	* @brief file filer for Anti-virus or other file contents filter 
+	* @param obj  Filter object
+	* @param HttpReq Http Request we are going to filter
+	* @returns -1 on error, or enum Action  see  @link Action
+	*/
 	int (*foo_file_filter)(struct Filter *obj, struct HttpReq *);
 	
 	/**
-	* Load filter object from XML config
+	* @brief Load filter object from XML config
 	* @param obj  Filter object
 	* @param xml  Node that is the root of this, filter object,
 	*             may have attributes and/or children.
@@ -110,10 +117,10 @@ void Filter_free(struct Filter **obj);
 void Filter_get(struct Filter *obj);
 void Filter_put(struct Filter **obj);
 
-static inline void Filter_setFilterId(struct Filter *obj, int id) {
+static inline void Filter_setFilterId(struct Filter *obj, unsigned int id) {
 	obj->filter_id = id;
 }
-static inline int Filter_getFilterId(struct Filter *obj) {
+static inline unsigned int Filter_getFilterId(struct Filter *obj) {
 	return obj->filter_id;
 }
 /** get Lower inherited  object  ID, NOTE should be read only */
