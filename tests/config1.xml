@@ -1,0 +1,30 @@
+<WebFilter non_http_action="accept" max_filtered_file_size="1234567" tmp_dir="/tmp/nfqwf"> 
+	<FilterObjectsDef>
+<!--		<FilterObject Filter_ID="1" type="filter/AntiVirus" skipSize="1234567"/>
+		<FilterObject Filter_ID="3" type="filter/GoogleSafeBrowsing" timeout="1234567"/>-->
+		<FilterObject Filter_ID="4" type="filter/ip" address="192.168.10.254" mask="255.255.255.255" src="0"/>
+		<FilterObject Filter_ID="5" type="filter/host" host="*sex*"/>
+		<FilterObject Filter_ID="6" type="filter/host" host="*drugs*"/>
+		<FilterObject Filter_ID="7" type="filter/host" host="*rockAndRoll*"/>
+		<FilterObject Filter_ID="8" type="filter/host" host="*facebook*"/>
+		<FilterObject Filter_ID="9" type="filter/ip" address="192.168.67.100" mask="255.255.255.255" src="1"/>
+		<FilterObject Filter_ID="10" type="filter/time" sun="0" mon="1" tue="1" wed="1" thu="1" fri="1" sat="0" from="08:00" to="16:59" comment="work hours"/>
+		<FilterObject Filter_ID="11" type="filter/url" url="http://directory.google.com/Top/Society/Politics/Anarchism/Issues/The_Anarchist_Cookbook*" comment="anarchist cookbook"/>
+	</FilterObjectsDef>
+	<Rules>
+		<Rule Rule_ID="3" action="reject" log="1" comment="Anarchist Cookbook">
+			<FilterObject Filter_ID="11" group="0" comment="google"/>
+		</Rule>
+
+		<Rule Rule_ID="4" action="reject" log="1" comment="Workhours facebook">
+			<FilterObject Filter_ID="8" group="0" comment="facebook"/>
+			<FilterObject Filter_ID="10" group="1" comment="work time"/>
+		</Rule>
+		<Rule Rule_ID="5" action="reject" log="1" comment="Sex Drugs rock and roll">
+			<FilterObject Filter_ID="5" group="0" comment="Sex"/>
+			<FilterObject Filter_ID="6" group="0" comment="drugs"/>
+			<FilterObject Filter_ID="7" group="0" comment="RockNRoll"/>
+		</Rule>
+		<Rule Rule_ID="99" action="accept" log="1" comment="Default policy accept"/>
+	</Rules>
+</WebFilter>

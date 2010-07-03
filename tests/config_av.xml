@@ -1,0 +1,17 @@
+<WebFilter non_http_action="accept" max_filtered_file_size="1234567" tmp_dir="/tmp/nfqwf">
+	<FilterObjectsDef>
+		<FilterObject Filter_ID="1" type="filter/clamav" skip_size="1234567"/>
+		<FilterObject Filter_ID="11" type="filter/url" url="http://directory.google.com/Top/Society/Politics/Anarchism/Issues/The_Anarchist_Cookbook*" comment="anarchist cookbook"/>
+	</FilterObjectsDef>
+	<Rules>
+		<!-- Note Rule ID 0 is special to preload AV and categroy and reject dangerous stuff -->
+		<Rule Rule_ID="0" action="virus" log="1">
+			<FilterObject Filter_ID="1" group="0" comment="AV filter"/>
+		</Rule>
+		<Rule Rule_ID="3" action="reject" log="1" comment="Anarchist Cookbook">
+			<FilterObject Filter_ID="11" group="0" comment="google"/>
+		</Rule>
+
+		<Rule Rule_ID="99" action="accept" log="1" comment="Default policy accept"/>
+	</Rules>
+</WebFilter>
