@@ -602,6 +602,6 @@ void ContentFilter_logReq(struct ContentFilter* cf, struct HttpReq *req)
 	syslog(LOG_INFO, "WF matched rule id=%d url='%s' verdict=%d length=%llu received=%llu duration=%d.%04d",
 		Rule_getId(rule), req->url, rule->action, req->server_resp_msg.content_length,
 		req->server_resp_msg.content_received,
-		delta_time.tv_sec, delta_time.tv_usec/1000);
+		(int) delta_time.tv_sec, (int) delta_time.tv_usec/1000);
 }
 
