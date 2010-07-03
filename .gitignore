@@ -1,4 +1,6 @@
 *~
+*.la 
+*.lo
 *.in
 *.kde*
 *.log
@@ -31,3 +33,5 @@ nfq-proxy-config.h
 stamp-h1
 vgcore.*
 web_proxy
+.libs/
+
