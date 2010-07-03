@@ -10,3 +10,7 @@ to compile:
 autoreconf -fi
 ./configure
 make
+
+
+To generate developer doxygen docs in doc/ dir:
+make doxygen-doc

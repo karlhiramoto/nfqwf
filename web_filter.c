@@ -14,42 +14,59 @@ linux iptables NF_QUEUE.
 @section DesignReq Design Requirements
 
 <ol>
-<li> Rule creation </li>
-<li> Function as a HTTP 1.0  and HTTP 1.1 content filter, with persistent connections.  RFC 2616.</li>
+<li> Rule creation See: @link Rules </li>
+<li> Function as a HTTP 1.0  and HTTP 1.1 content filter,
+	with persistent connections.  RFC 2616.</li>
 <li> Denied pages are redirected to an error page and logged </li>
 <li> Logging of source IP, Host, Domain, URL, Content length </li>
 <li> Antivirus filter in userspace. </li>
 <li> Usage of linux kernel NF_QUEUE </li>
 <li> Use one process with multiple threads. </li>
-<li> Load balance multiple connections over multiple queue targets  (See man iptables  --queue-balance) </li>
-<li> One thread per queue which will create a netlink socket listening to only one queue ID. </li>
+<li> Load balance multiple connections over multiple queue targets
+	(See man iptables  --queue-balance) </li>
+<li> One thread per queue which will create a netlink socket
+	listening to only one queue ID. </li>
 <li> Each thread/queue will handle the possibility of multiple connections </li>
-<li> Must be tolerant of TCP/IP check-sum faults, out of order packets and packet fragmentation. See TCP RFC 793 </li>
+<li> Must be tolerant of TCP/IP check-sum faults, out of order
+	packets and packet fragmentation. See TCP RFC 793 </li>
 <li> Rule verdicts. Each web filter rule will have various possible verdicts: </li>
 <ol>
 	<li> NONE:   The filter did not match. </li>
-	<li> ACCEPT: The filter matched and we should accept (as is now in webchase) </li>
-	<li> REJECT: (as is now in webchase) </li>
-	<li> VIRUS: (as is now in webchase) </li>
-	<li> PHISHING:  Phishing type page that is reported by google safe browising, or comtrend </li>
-	<li> MALWARE: Malware page that is reported by google safe browising, or comtrend </li>
-	<li> ALWAYS TRUST:   This may be used to trust a domain, IP or network, and ACCEPT_MARK all connections, we can then bypass all AV and filtering to get a performance boost on this domain. </li>
+	<li> ACCEPT: The filter matched and we should accept, allow the traffic</li>
+	<li> REJECT: Reject the page with an error message. Page blocked </li>
+	<li> VIRUS: Reject the page with message of blocking virus </li>
+	<li> PHISHING:  Phishing type page that is reported by google safe browsing,
+		or other source </li>
+	<li> MALWARE: Malware page that is reported by google safe browising, or
+		other source </li>
+	<li> ALWAYS TRUST:   This may be used to trust a domain, IP or network,
+		and ACCEPT_MARK all connections, we can then bypass all AV and
+		filtering to get a performance boost on this domain. </li>
 	</ol>
 <li> HTTP request filters modules, based on a filter module API. See @link FilterObject </li>
 	<ol>
 	<li> Filters on host.domain See: @link HostFilter</li>
 	<li> Filters on IP or Network.  See: @link IPFilter </li>
-	<li> Filters on URL categories by comtrend. This filter must be asynchronous. We can send the HTTP request to the server and the comtrend API in parallel.  When the 1st packet of the HTTP response comes back from the server, we can check and wait (with timeout) for the response of the comtrend API. </li>
-	<li> String filters that match any part of the URL. NOTE: using these is a performance penalty because it implies that the entire connection can not be accepted, to avoid things like http://google.com/translate/porno-website.com </li>
-	<li> (Optional) Filters that can read categories of domains listed in squid gaurd config files. http://www.squidguard.org/ </li>
+	<li> Filters may be asynchronous.
+	We can send the HTTP request to the server and the filter in parallel.
+	When the 1st packet of the HTTP response comes back from the server,
+	we can check and wait (with timeout) for the response of the filter. </li>
+	<li> String filters that match any part of the URL.
+	NOTE: using these is a performance penalty because it implies that the entire connection can not be accepted, to avoid things like http://google.com/translate/porno-website.com </li>
+	<li> (Optional) Filters that can read categories of domains listed in squid guard config files. http://www.squidguard.org/ </li>
 	<li> (Optional) Filter based on Google Safe browsing API http://code.google.com/apis/safebrowsing/ Must be asynchronous same as comtrend </li>
 	</ol>
 <li> HTTP Response content filters </li>
 <li> Send HTTP request contents to antivirus such as clamav </li>
-<li> (Optional)  Ability to detect a NF_MARK set by another iptables module, in the future this could be a hardware AV (such as lionic) doing AV on single packets </li>
-<li> If Virus detected the result for the URL will be cashed, using this cached result we REJECT subsequent HTTP requests for the URL. </li>
-<li> With HTTP requests that have the verdict REJECT, we modify the HTTP response to redirect to a new LOCATION (RFC 2616 Chapter 14.30) to display an error page, or directly inject the error page into the packet.  (Note: we will have to test what works best) </li>
-<li> Use XML and libxml2 read/write config file.   This means we can eliminate libconfuse from the system since only webchase uses it, and has memory leaks. nsbd is already linked with libxml2 so comes at no extra memory cost. </li>
+<li> (Optional) Ability to detect a NF_MARK set by another iptables module,
+in the future this could be a hardware AV doing AV on single packets,
+or another iptables rule marking the packet. </li>
+<li> If Virus detected the result for the URL will be cashed, using this cached
+	result we REJECT subsequent HTTP requests for the URL.
+	see @link ClamAvFilter </li>
+<li> With HTTP requests that have the verdict REJECT, VIRUS, PHISHING, MALWARE,
+we modify the HTTP response to inject the error page into the packet.</li>
+<li> Use XML and libxml2 read/write config file.</li>
 
 </ol>
 
