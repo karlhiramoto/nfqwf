@@ -5,11 +5,14 @@
 #include "nfq-web-filter-config.h"
 #endif
 
+#include <stdint.h>
+
 #include <stdbool.h>
 #include "Filter.h"
 
 
 /**
+* @ingroup Object
 * @defgroup Rules Rule definitions
 * @{
 */
@@ -52,6 +55,11 @@ struct Rule {
 	bool notify;   /**< Email Notify */
 	enum Action action;  /**< Action this rule should take */
 
+	/** if rule matches mark the packet with this mark*/
+	uint32_t mark;
+	/** mark mask */
+	uint32_t mask;
+
 	/// Note possible new way to do filters. 
 	/** Filter object may be of any objects
 	like IP, Network, host, domain, category, etc
@@ -86,6 +94,21 @@ static inline const char *Rule_getComment(struct Rule *r) {
 }
 
 enum Action Rule_getVerdict(struct Rule *r,  struct HttpReq *req);
+
+static inline void Rule_setMark(struct Rule *r, uint32_t mark) {
+	r->mark = mark;
+}
+
+static inline uint32_t Rule_getMark(struct Rule *r) {
+	return r->mark;
+}
+
+static inline void Rule_setMask(struct Rule *r, uint32_t mask) {
+	r->mask = mask;
+}
+static inline uint32_t Rule_getMask(struct Rule *r) {
+	return r->mask;
+}
 
 /** @}
 end of file

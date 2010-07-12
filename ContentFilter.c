@@ -141,6 +141,9 @@ static int ContentFilter_loadRuleNode(struct ContentFilter* cf, xmlNode *rule_no
 	char buffer[32];
 	xmlNode *filter_node;
 	int group;
+	int mark;
+	int mask;
+	char *endptr;
 	
 	if (!rule_node)
 		return -EINVAL;
@@ -187,7 +190,34 @@ static int ContentFilter_loadRuleNode(struct ContentFilter* cf, xmlNode *rule_no
 		Rule_setComment(rule, (char *)prop);
 		xmlFree(prop);
 	}
-	
+
+	prop = xmlGetProp(rule_node, BAD_CAST "mark");
+	if (prop) {
+		mark = strtol((char *) prop, &endptr, 0);
+		if (*endptr == 0)
+			Rule_setMark(rule, mark);
+		else {
+			ERROR(" error reading mark on rule id=%d\n", Rule_getId(rule));
+		}
+		xmlFree(prop);
+	}
+
+	prop = xmlGetProp(rule_node, BAD_CAST "mask");
+	if (prop) {
+		mask = strtol((char *) prop, &endptr, 0);
+		if (*endptr == 0)
+			Rule_setMask(rule, mask);
+		else {
+			ERROR(" error reading mask on rule id=%d\n", Rule_getId(rule));
+
+			/* default to set all bits */
+			Rule_setMask(rule, -1);
+		}
+		xmlFree(prop);
+	} else {
+		Rule_setMask(rule, -1);
+	}
+
 	DBG(1, "Rule ID=%u action=%s log=%d comment='%s'\n", id,
 		Action_toAscii(action, buffer, sizeof(buffer)), log,
 		Rule_getComment(rule));

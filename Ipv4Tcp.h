@@ -72,6 +72,8 @@ void Ipv4TcpPkt_setNlVerictDrop(struct Ipv4TcpPkt *pkt);
 void Ipv4TcpPkt_resetTcpCon(struct Ipv4TcpPkt *pkt);
 void print_hex(const unsigned char* payload, int len);
 
+void Ipv4TcpPkt_setMark(struct Ipv4TcpPkt *pkt, uint32_t mark, uint32_t mask);
+
 /** @}  */
 
 #endif

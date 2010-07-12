@@ -2,7 +2,7 @@
 	<FilterObjectsDef>
 <!--		<FilterObject Filter_ID="1" type="filter/AntiVirus" skipSize="1234567"/>
 		<FilterObject Filter_ID="3" type="filter/GoogleSafeBrowsing" timeout="1234567"/>-->
-		<FilterObject Filter_ID="4" type="filter/ip" address="192.168.10.254" mask="255.255.255.255" src="0"/>
+		<FilterObject Filter_ID="4" type="filter/ip" address="192.168.99.3" mask="255.255.255.255" src="0"/>
 		<FilterObject Filter_ID="5" type="filter/host" host="*sex*"/>
 		<FilterObject Filter_ID="6" type="filter/host" host="*drugs*"/>
 		<FilterObject Filter_ID="7" type="filter/host" host="*rockAndRoll*"/>
@@ -12,6 +12,12 @@
 		<FilterObject Filter_ID="11" type="filter/url" url="http://directory.google.com/Top/Society/Politics/Anarchism/Issues/The_Anarchist_Cookbook*" comment="anarchist cookbook"/>
 	</FilterObjectsDef>
 	<Rules>
+
+		<Rule Rule_ID="3" action="accept" log="1" comment="Mark host" mark="1">
+			<FilterObject Filter_ID="4" group="0" comment="server"/>
+		</Rule>
+
+
 		<Rule Rule_ID="3" action="reject" log="1" comment="Anarchist Cookbook">
 			<FilterObject Filter_ID="11" group="0" comment="google"/>
 		</Rule>

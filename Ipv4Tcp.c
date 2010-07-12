@@ -494,5 +494,20 @@ void Ipv4TcpPkt_resetTcpCon(struct Ipv4TcpPkt *pkt) {
 	pkt->modified_ip_data = pkt->ip_data; // mark modified
 }
 
+void Ipv4TcpPkt_setMark(struct Ipv4TcpPkt *pkt, uint32_t mark, uint32_t mask) {
+	uint32_t old_mark;
+
+	if (mask == -1) {
+		nfnl_queue_msg_set_mark(pkt->nl_qmsg, mark);
+	} else {
+		old_mark = nfnl_queue_msg_get_mark(pkt->nl_qmsg);
+		old_mark &= ~mask; // clear bits part of mask
+		old_mark |= mark & mask;
+		nfnl_queue_msg_set_mark(pkt->nl_qmsg, old_mark);
+	}
+
+}
+
+
 /** @}  */
 

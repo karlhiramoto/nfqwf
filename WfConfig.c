@@ -168,7 +168,7 @@ int WfConfig_loadConfig(struct WfConfig* conf, const char *config_xml_file)
 			root_node->name,	XML_ROOT_NODE_NAME);
 
 	// set default
-	conf->non_http_action = non_http_action_reset;
+	conf->non_http_action = non_http_action_accept;
 	prop = xmlGetProp(root_node, BAD_CAST "non_http_action");
 	if (prop) {
 		if (!strncasecmp((const char*) prop, "reset", 6)) {

@@ -752,6 +752,8 @@ static int __processs_response_payload(struct HttpConn* con, struct Ipv4TcpPkt *
 				// NOTE this happens when on a http server when over loaded it may send a Overload without http headers
 				WARN("Not HTTP protocol len=%d HTTP missing. FIXME ignore this packet/connection\n", len);
 				con->not_http = true;
+				Ipv4TcpPkt_printPkt(pkt, stderr);
+				print_hex(pkt->tcp_payload, pkt->tcp_payload_length);
 				__handle_non_http_pkt(con, pkt);
 				return 0;
 			}
@@ -929,6 +931,12 @@ static int __processs_response_payload(struct HttpConn* con, struct Ipv4TcpPkt *
 			default:
 				break;
 		}
+	}
+
+	if (req->rule_matched && Rule_getMark(req->rule_matched)) {
+		// we should mark the packet
+		Ipv4TcpPkt_setMark(pkt, Rule_getMark(req->rule_matched),
+			Rule_getMask(req->rule_matched));
 	}
 
 	// RFC2616 status codes 204 and 304 have no message body
