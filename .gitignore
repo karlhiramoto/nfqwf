@@ -6,6 +6,7 @@
 *.log
 *.o
 *.sh
+nfq-web-filter-config.h
 aclocal.m4
 autom4te.cache/
 compile
