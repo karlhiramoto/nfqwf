@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <netinet/in.h>
 #include <linux/tcp.h>
 #include <linux/netlink.h>
@@ -38,6 +39,7 @@ struct Ipv4TcpPkt {
 	uint32_t packet_id; /**< Linux Netlink Packet ID number */
 	uint32_t seq_num; /**< TCP Sequence number */
 	uint32_t ack_num; /**< TCP ACK number */
+	uint32_t tcp_flags; /**< 8 bits of tcp flags but use 32bit so we are machine size and use linux macros */
 	uint16_t ip_checksum; /**< IP header checksum */
 	uint16_t tcp_checksum; /**< TCP checksum */
 	uint16_t ip_packet_length; /**< Length of IP packet */
@@ -57,7 +59,7 @@ void Ipv4TcpPkt_resetTcpCksum(unsigned char *ip_pkt, unsigned int ip_pkt_size, u
 
 struct Ipv4TcpPkt *Ipv4TcpPkt_new(unsigned nl_buff_size);
 void Ipv4TcpPkt_del(struct Ipv4TcpPkt **pkt);
-struct Ipv4TcpPkt * Ipv4TcpPkt_clone(struct Ipv4TcpPkt *in_pkt);
+struct Ipv4TcpPkt * Ipv4TcpPkt_clone(struct Ipv4TcpPkt *in_pkt, bool copy_packet_data);
 
 int Ipv4TcpPkt_parseNlHdrMsg(struct Ipv4TcpPkt *pkt, struct nlmsghdr *nlh);
 int Ipv4TcpPkt_parseIpPayload(struct Ipv4TcpPkt *pkt);

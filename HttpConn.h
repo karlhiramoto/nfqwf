@@ -36,10 +36,9 @@ struct HttpConn {
 	enum tcp_conntrack server_state;
 	/// Contains pointer with reference to content filter and its rules
 	struct WfConfig *config;
-//  	struct ContentFilter *c_filter;
 
 	struct PrivData *priv_data;
-	
+
 	/** linked list of HttpReq.  HTTP 1.1 persistent connections have multiple reqs per con.
 	After request has been received by client we may remove from list.
 	*/

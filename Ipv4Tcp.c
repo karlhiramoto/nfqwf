@@ -36,13 +36,15 @@ struct Ipv4TcpPkt *Ipv4TcpPkt_new(unsigned nl_buff_size)
 	if (!new_pkt)
 		return NULL;
 
-	new_pkt->nl_buffer = malloc(nl_buff_size);
+	if (nl_buff_size) {
+		new_pkt->nl_buffer = malloc(nl_buff_size);
 
-	if (!new_pkt->nl_buffer) {
-		free(new_pkt);
-		return NULL;
+		if (!new_pkt->nl_buffer) {
+			free(new_pkt);
+			return NULL;
+		}
 	}
-
+	DBG(6, "new pkt %p size=%d\n", new_pkt, nl_buff_size);
 	return new_pkt;
 }
 
@@ -53,17 +55,22 @@ void Ipv4TcpPkt_del(struct Ipv4TcpPkt **in_pkt)
 	if(pkt->nl_qmsg)
 		nfnl_queue_msg_put(pkt->nl_qmsg);
 
-	free(pkt->nl_buffer);
+	if (pkt->nl_buffer)
+		free(pkt->nl_buffer);
+
+	DBG(6, "free pkt %p  qmsg=%p nl_buffer=%p\n", pkt, pkt->nl_qmsg, pkt->nl_buffer);
 	free(pkt);
 	*in_pkt = NULL;
 }
 
 // copy the packet, NOTE for now this is not an exact copy but a minimum size copy.
-struct Ipv4TcpPkt * Ipv4TcpPkt_clone(struct Ipv4TcpPkt *in_pkt)
+struct Ipv4TcpPkt * Ipv4TcpPkt_clone(struct Ipv4TcpPkt *in_pkt, bool copy_packet_data)
 {
-	struct Ipv4TcpPkt *new_pkt = Ipv4TcpPkt_new(in_pkt->ip_packet_length);
+	struct Ipv4TcpPkt *new_pkt;
 
-	DBG(6, "Clone of %d length\n", in_pkt->ip_packet_length);
+	new_pkt = Ipv4TcpPkt_new(copy_packet_data ? in_pkt->ip_packet_length : 0);
+
+	DBG(6, "Clone of %d length\n", copy_packet_data ? in_pkt->ip_packet_length : 0);
 	if (!new_pkt)
 		return NULL;
 
@@ -71,6 +78,7 @@ struct Ipv4TcpPkt * Ipv4TcpPkt_clone(struct Ipv4TcpPkt *in_pkt)
 	new_pkt->tuple = in_pkt->tuple;
 	new_pkt->seq_num = in_pkt->seq_num;
 	new_pkt->ack_num = in_pkt->ack_num;
+	new_pkt->tcp_flags = in_pkt->tcp_flags;
 	new_pkt->ip_checksum = in_pkt->ip_checksum;
 	new_pkt->tcp_checksum = in_pkt->tcp_checksum;
 	new_pkt->ip_packet_length = in_pkt->ip_packet_length;
@@ -83,7 +91,9 @@ struct Ipv4TcpPkt * Ipv4TcpPkt_clone(struct Ipv4TcpPkt *in_pkt)
 	new_pkt->tcp_payload = new_pkt->nl_buffer + (in_pkt->tcp_payload - in_pkt->ip_data);
 
 	// copy IP packet data
-	memcpy(new_pkt->ip_data, in_pkt->ip_data, in_pkt->ip_packet_length);
+	if (copy_packet_data)
+		memcpy(new_pkt->ip_data, in_pkt->ip_data, in_pkt->ip_packet_length);
+
 	return new_pkt;
 }
 
@@ -228,7 +238,8 @@ void Ipv4TcpPkt_resetTcpCksum(unsigned char *ip_pkt, unsigned int ip_pkt_size, u
 void Ipv4TcpPkt_setTcpFlag(struct Ipv4TcpPkt *pkt, int flag_val)
 {
 	int *flag_data;
-	
+	if (!pkt->ip_data)
+		return;
 	flag_data = ((int*) &pkt->ip_data[pkt->ip_hdr_len+TCP_FLAG_OFFSET]);
 	*flag_data |= flag_val;
 }
@@ -237,7 +248,10 @@ void Ipv4TcpPkt_clearTcpFlag(struct Ipv4TcpPkt *pkt, int flag_val)
 
 {
 	int *flag_data;
-	
+
+	if (!pkt->ip_data)
+		return;
+
 	flag_data = ((int*) &pkt->ip_data[pkt->ip_hdr_len+TCP_FLAG_OFFSET]);
 	*flag_data &= ~flag_val;
 }
@@ -299,7 +313,6 @@ int Ipv4TcpPkt_parseIpPayload(struct Ipv4TcpPkt *pkt)
 	int tcp_data_offset;
 	int sum;
 
-
 	if (pkt->ip_packet_length < 32) {
 		ERROR("PKT below min length len=%d\n", pkt->ip_packet_length);
 		return -EINVAL;
@@ -356,6 +369,8 @@ int Ipv4TcpPkt_parseIpPayload(struct Ipv4TcpPkt *pkt)
 // 		((short) *((short*) &payload[16])), // DST
 // 		((short) *((short*) &payload[18])),
 // 		htons(IPPROTO_TCP),  htons(pkt->ip_packet_length - hdr_len));
+
+	pkt->tcp_flags = ((int) *((int*) &payload[pkt->ip_hdr_len + TCP_FLAG_OFFSET])) & __cpu_to_be32(0x00FF0000);
 
 	sum = ((unsigned short) *((unsigned short*) &payload[12])) + // SRC
 			((unsigned short) *((unsigned short*) &payload[14])) +
@@ -492,6 +507,7 @@ void Ipv4TcpPkt_resetTcpCon(struct Ipv4TcpPkt *pkt) {
 	Ipv4TcpPkt_setTcpFlag(pkt, (TCP_FLAG_FIN | TCP_FLAG_RST)); // set FIN RST
 	Ipv4TcpPkt_resetTcpCksum(pkt->ip_data, pkt->ip_packet_length, pkt->ip_hdr_len);
 	pkt->modified_ip_data = pkt->ip_data; // mark modified
+	pkt->modified_ip_data_len = pkt->ip_packet_length;
 }
 
 void Ipv4TcpPkt_setMark(struct Ipv4TcpPkt *pkt, uint32_t mark, uint32_t mask) {

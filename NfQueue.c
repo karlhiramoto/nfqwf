@@ -342,17 +342,15 @@ static int __NfQueue_process_pkt(struct NfQueue* nfq_wf, struct Ipv4TcpPkt *pkt)
 {
 	struct HttpConn* con;
 	int ret;
-	unsigned int tcp_flags_loc;
 
 	// by default, may be changed later
 	nfnl_queue_msg_set_verdict(pkt->nl_qmsg, NF_ACCEPT);
 
 	con = __find_tcp_conn(nfq_wf, pkt);
 	if (!con) {
-		tcp_flags_loc = pkt->ip_hdr_len+12;
 
-		if (TCP_FLAG_SET(pkt, tcp_flags_loc,
-			(TCP_FLAG_PSH | TCP_FLAG_RST |TCP_FLAG_FIN | TCP_FLAG_ACK ))) {
+		if (pkt->tcp_flags &
+			(TCP_FLAG_PSH | TCP_FLAG_RST |TCP_FLAG_FIN | TCP_FLAG_ACK )) {
 
 			DBG(1, "Ignore packet no connection found q_id=%d\n", nfq_wf->q_id);
 

@@ -1,4 +1,4 @@
-<WebFilter non_http_action="accept" max_filtered_file_size="1234567" tmp_dir="/tmp/nfqwf"> 
+<WebFilter non_http_action="accept" max_filtered_file_size="1234567" tmp_dir="/tmp/nfqwf" pkt_buf_size="2048"> 
 	<FilterObjectsDef>
 <!--		<FilterObject Filter_ID="1" type="filter/AntiVirus" skipSize="1234567"/>
 		<FilterObject Filter_ID="3" type="filter/GoogleSafeBrowsing" timeout="1234567"/>-->

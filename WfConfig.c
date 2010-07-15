@@ -40,6 +40,16 @@ struct WfConfig
 		be scanned otherwise skip file scan */
 	unsigned int max_filtered_file_size;
 
+	/** Maximum out of order packets
+		Out of order packets are buffered for later analysis,
+		On systems with low amounts of RAM,
+		memory usage needs to be controlled to avoid OOM killer.
+
+		The worst case scenario is a long fat connection (high bandwidth high ping time)
+		a large file, and large TCP window.
+	*/
+	unsigned int pkt_buf_size;
+
 	char *tmp_dir; /* where to store tmp files if AV file scan active */
 
 	/// TODO a configurable error page.
@@ -190,6 +200,17 @@ int WfConfig_loadConfig(struct WfConfig* conf, const char *config_xml_file)
 		conf->max_filtered_file_size = 1024*1024;
 	}
 
+	prop = xmlGetProp(root_node, BAD_CAST "pkt_buf_size");
+	if (prop) {
+		conf->pkt_buf_size = atoi((const char*)prop);
+		xmlFree(prop);
+		if (conf->pkt_buf_size < 10) {
+			WARN(" invalid 'pkt_buf_size' XML prop. using default \n");
+			conf->pkt_buf_size = 2048;
+		}
+	} else {
+		conf->pkt_buf_size = 2048;
+	}
 	prop = xmlGetProp(root_node, BAD_CAST "tmp_dir");
 	if (prop) {
 		conf->tmp_dir = strdup((const char*)prop);
@@ -265,6 +286,11 @@ void WfConfig_setLowQNum(struct WfConfig* conf, uint16_t num) {
 
 unsigned int WfConfig_getMaxFiltredFileSize(struct WfConfig* conf) {
 	return conf->max_filtered_file_size;
+}
+
+unsigned int WfConfig_getPktBuffSize(struct WfConfig* conf)
+{
+	return conf->pkt_buf_size;
 }
 
 

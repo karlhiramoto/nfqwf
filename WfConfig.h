@@ -52,6 +52,8 @@ enum non_http_action WfConfig_getNonHttpAction(struct WfConfig* conf);
 
 unsigned int WfConfig_getMaxFiltredFileSize(struct WfConfig* conf);
 
+unsigned int WfConfig_getPktBuffSize(struct WfConfig* conf);
+
 const char *WfConfig_getTmpDir(struct WfConfig* conf);
 
 #endif

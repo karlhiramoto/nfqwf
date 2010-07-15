@@ -128,6 +128,7 @@ static void __pkt_list_free(ipv4_tcp_pkt_list_t *pkt_list)
 {
 	struct Ipv4TcpPkt *pkt;
 
+	DBG(5,"packet list count=%lu\n",ubi_dlCount(pkt_list));
 	while ( (pkt = (struct Ipv4TcpPkt *) ubi_dlRemHead(pkt_list)) ) {
 		DBG(1, "Warning freeing packet %p in buffer count=%lu\n",
 			pkt, ubi_dlCount(pkt_list));
@@ -135,31 +136,80 @@ static void __pkt_list_free(ipv4_tcp_pkt_list_t *pkt_list)
 	}
 	free(pkt_list);
 }
-static void __pkt_list_insert(ipv4_tcp_pkt_list_t *pkt_list, struct Ipv4TcpPkt *pkt)
+
+/* insert packet into buffer for processing later
+*  This function is used to handle out of order packets
+*/
+static void __pkt_list_insert(struct HttpConn *con, struct HttpReq *req,
+	struct Ipv4TcpPkt *pkt, bool from_server, int seq_delta)
 {
 	struct Ipv4TcpPkt *next_pkt;
 	struct Ipv4TcpPkt *cur_pkt = NULL;
 	struct Ipv4TcpPkt *new_pkt;
-	
+	ipv4_tcp_pkt_list_t *pkt_list;
+	int i = 0;
+	const int EXTRA_BUFF = 5000;
+
+	if (from_server)
+		pkt_list = con->server_buffer;
+	else
+		pkt_list = con->client_buffer;
+
 	DBG(2, "Saving packet pkt->seq_num=%u list=%p count=%lu\n",
 		pkt->seq_num, pkt_list, ubi_dlCount(pkt_list));
 	next_pkt = (struct Ipv4TcpPkt *) ubi_dlFirst(pkt_list);
+
+	/* find location to insert packet in list */
 	while(next_pkt) {
 
-		DBG(2, "cur_pkt->seq_num=%u pkt->seq_num=%u\n", next_pkt->seq_num, pkt->seq_num);
+		DBG(2, "cur_pkt->seq_num=%u pkt->seq_num=%u delta = %d payload_len=%u pos =%u/%lu data=%p\n",
+			next_pkt->seq_num, pkt->seq_num,
+			next_pkt->seq_num - pkt->seq_num,
+			next_pkt->tcp_payload_length,
+			i, ubi_dlCount(pkt_list), pkt->ip_data);
+
 		if (pkt->seq_num < next_pkt->seq_num)
-			break;
+			break; // found location to insert
 		cur_pkt = next_pkt;
 
 		next_pkt = (struct Ipv4TcpPkt *) ubi_dlNext(cur_pkt);
+		i++;
 	}
 
 	// get a copy, because the original will be passed back to iptables/netfilter queue
-	//TODO OPTIMIZE look into saving a reference count, and use the same packet without the copy
-	new_pkt = Ipv4TcpPkt_clone(pkt);
+	if (from_server && req->server_resp_msg.state == msg_state_read_content
+		&& req->server_resp_msg.content_length > EXTRA_BUFF
+		&& (!ContentFilter_hasFileFilter(req->cf)
+			|| req->server_resp_msg.content_length >
+			WfConfig_getMaxFiltredFileSize(con->config))
+		&& (req->server_resp_msg.content_received + seq_delta) <
+			(req->server_resp_msg.content_length - EXTRA_BUFF)) {
+		// memory optimization  we don't need the packet payload only the meta data
+		new_pkt = Ipv4TcpPkt_clone(pkt, false);
+	} else {
+		new_pkt = Ipv4TcpPkt_clone(pkt, true);
+	}
 
 	// if list is empty this will insert at head
 	ubi_dlInsert(pkt_list, (ubi_dlNodePtr) new_pkt, (ubi_dlNodePtr) cur_pkt);
+
+	DBG(2, "Saving packet pkt->seq_num=%u list=%p position =%u/%lu d=%p\n",
+		pkt->seq_num, pkt_list, i, ubi_dlCount(pkt_list), pkt->ip_data);
+
+	// DEBUG only
+	while(next_pkt) {
+
+		DBG(2, "cur_pkt->seq_num=%u pkt->seq_num=%u delta=%d len=%u pos =%u/%lu d=%p\n",
+			next_pkt->seq_num, pkt->seq_num,
+			next_pkt->seq_num - pkt->seq_num,
+			next_pkt->tcp_payload_length,
+			i, ubi_dlCount(pkt_list), pkt->ip_data);
+
+			cur_pkt = next_pkt;
+
+			next_pkt = (struct Ipv4TcpPkt *) ubi_dlNext(cur_pkt);
+			i++;
+	}
 }
 
 void HttpConn_del(struct HttpConn **con_in)
@@ -201,11 +251,11 @@ int __HttpConn_checkFlags(struct HttpConn* con, struct Ipv4TcpPkt *pkt,
 	tcp_flags_loc = pkt->ip_hdr_len + TCP_FLAG_OFFSET;
 	switch (cur_state) {
 		case TCP_CONNTRACK_NONE:
-			if (TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_SYN)) {
+			if (pkt->tcp_flags & TCP_FLAG_SYN) {
 				next_tcp_state = TCP_CONNTRACK_SYN_SENT;
 			}
 		case TCP_CONNTRACK_SYN_SENT:
-			if (TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_ACK)) {
+			if (pkt->tcp_flags & TCP_FLAG_ACK) {
 				/* establised */
 				next_tcp_state = TCP_CONNTRACK_ESTABLISHED;
 			} else {
@@ -213,7 +263,7 @@ int __HttpConn_checkFlags(struct HttpConn* con, struct Ipv4TcpPkt *pkt,
 			}
 
 			// when sever sends SYN ACK we know we're synchronized
-			if (TCP_FLAG_SET(pkt, tcp_flags_loc, (TCP_FLAG_SYN | TCP_FLAG_ACK) )
+			if ( (pkt->tcp_flags & (TCP_FLAG_SYN | TCP_FLAG_ACK))
 				== (TCP_FLAG_SYN | TCP_FLAG_ACK)) {
 				DBG(3, "TCP SYN/ACK seq=%u ack=%u\n", pkt->seq_num, pkt->ack_num);
 				con->server_seq_num = con->client_ack_num = pkt->seq_num;
@@ -223,11 +273,11 @@ int __HttpConn_checkFlags(struct HttpConn* con, struct Ipv4TcpPkt *pkt,
 			break;
 		case TCP_CONNTRACK_SYN_RECV:
 		case TCP_CONNTRACK_ESTABLISHED:
-			if (TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_FIN)) {
+			if (pkt->tcp_flags & TCP_FLAG_FIN) {
 				next_tcp_state = TCP_CONNTRACK_LAST_ACK;
-			} else if (TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_RST)) {
+			} else if (pkt->tcp_flags & TCP_FLAG_RST) {
 
-				if (TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_ACK)) {
+				if (pkt->tcp_flags & TCP_FLAG_ACK) {
 					// reset ACK
 					next_tcp_state = TCP_CONNTRACK_CLOSE;
 				} else {
@@ -239,9 +289,7 @@ int __HttpConn_checkFlags(struct HttpConn* con, struct Ipv4TcpPkt *pkt,
 		case TCP_CONNTRACK_FIN_WAIT:
 		case TCP_CONNTRACK_CLOSE_WAIT:
 		case TCP_CONNTRACK_LAST_ACK:
-			if (TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_ACK) || 
-				TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_FIN) ||
-				TCP_FLAG_SET(pkt, tcp_flags_loc, TCP_FLAG_RST)) {
+			if (pkt->tcp_flags & (TCP_FLAG_ACK | TCP_FLAG_FIN | TCP_FLAG_RST)) {
 				next_tcp_state = TCP_CONNTRACK_CLOSE;
 			}
 			break;
@@ -403,11 +451,8 @@ static void __handle_non_http_pkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 // 				(TCP_FLAG_FIN) )) {
 
 				DBG(4, "reset connection\n");
-				Ipv4TcpPkt_setTcpFlag(pkt, (TCP_FLAG_RST)); // set RST
-
-				Ipv4TcpPkt_resetTcpCksum(pkt->ip_data, pkt->ip_packet_length, pkt->ip_hdr_len);
-				pkt->modified_ip_data = pkt->ip_data; // mark modified
 				Ipv4TcpPkt_resetTcpCon(pkt);
+
 				con->server_data_altered = true;
 // 			}
 			break;
@@ -415,9 +460,8 @@ static void __handle_non_http_pkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 }
 
 
-static int __processs_req_payload(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
+static int __processs_req_payload(struct HttpConn* con, struct HttpReq *req, struct Ipv4TcpPkt *pkt)
 {
-	struct HttpReq *req;
 	unsigned char *p;
 	unsigned char *end;
 	unsigned char *line = NULL;
@@ -428,16 +472,12 @@ static int __processs_req_payload(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 // 	char value_str[16];  // for parsing numbers
 
 	DBG(5, "process http request cur_request=%d\n", con->cur_request);
-	req = __find_request(con, con->cur_request);
-	if (!req) {
-		DBG(5, "request not found allocate new\n");
-		req = __add_request_new_to_list(con);
-	}
+
 	msg = &req->client_req_msg;
 	DBG(5, "http request id=%d state=%d\n", req->id, req->client_req_msg.state);
 	len = pkt->tcp_payload_length;
 	p = (unsigned char*) pkt->tcp_payload;
-	
+
 	switch (msg->state) {
 		case msg_state_new:
 			DBG(5, "Processing new request packet\n");
@@ -678,8 +718,8 @@ static int __processs_req_payload(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 			}
 			break;
 		case msg_state_complete:
-			DBG(5, "WTF Process completed request\n");
-
+			ERROR("WTF completed request. invalid state! possible chunked request content length=%llu recieved=%llu\n",
+				  msg->content_length, msg->content_received);
 		default:
 			ERROR_FATAL("Invalid request state =%d \n", msg->state);
 			break;
@@ -717,9 +757,9 @@ RFC2616  "Transfer-encoding: chunked" is not handled properly,
 and we only detect end of transfer when connection closes. Not a crash bug,
 but prevents blocking request numbers+1 on the same connections
 */
-static int __processs_response_payload(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
+static int __processs_response_payload(struct HttpConn* con, struct HttpReq *req,  struct Ipv4TcpPkt *pkt)
 {
-	struct HttpReq *req;
+
 	unsigned int len;
 	char value_str[16];
 	unsigned char *p;
@@ -731,14 +771,9 @@ static int __processs_response_payload(struct HttpConn* con, struct Ipv4TcpPkt *
 	struct http_msg *msg;
 	
 	DBG(5, "process http response cur_response= %d\n", con->cur_response);
-	req = __find_request(con, con->cur_response);
-	if (!req) {
-		DBG(5, "request/response not found allocate new\n");
- 		req =__add_request_new_to_list(con);
-	} else {
-		DBG(5, "http response id=%d content_received=%llu content_length=%llu\n",
+	DBG(5, "http response id=%d content_received=%llu content_length=%llu\n",
 			req->id, req->server_resp_msg.content_received, req->server_resp_msg.content_length);
-	}
+
  	p = (unsigned char*) pkt->tcp_payload;
  	len = pkt->tcp_payload_length;
 	msg = &req->server_resp_msg;
@@ -998,11 +1033,12 @@ static int __pkt_list_process(struct HttpConn* con, ipv4_tcp_pkt_list_t *pkt_lis
 {
 	struct Ipv4TcpPkt *next_pkt;
 	int ret = 0;
-	
-	
+
+
 	next_pkt = (struct Ipv4TcpPkt *) ubi_dlRemHead(pkt_list);
 	if (next_pkt) {
-		DBG(2, "Extracted saved packet from list count=%lu\n", ubi_dlCount(pkt_list));
+		DBG(2, "Extracted saved packet from list count=%lu pkt=%p\n",
+			ubi_dlCount(pkt_list), next_pkt);
 		ret = HttpConn_processsPkt(con, next_pkt);
 		Ipv4TcpPkt_del(&next_pkt); // delete packet as we are done with it.		
 	}
@@ -1010,17 +1046,29 @@ static int __pkt_list_process(struct HttpConn* con, ipv4_tcp_pkt_list_t *pkt_lis
 	return ret;
 }
 
-
 int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 {
 	int delta;
-	con->last_pkt = time(NULL);
+	struct HttpReq *req;
 	int min_state;
+	bool from_server= __pkt_from_server(pkt);
+
+	con->last_pkt = time(NULL);
+	con->packet_count++;
+
+	req = __find_request(con, from_server ? con->cur_response : con->cur_request);
+	if (!req) {
+		DBG(5, "request/response not found allocate new\n");
+		req =__add_request_new_to_list(con);
+	} else {
+		DBG(5, "http response id=%d content_received=%llu content_length=%llu\n",
+			req->id, req->server_resp_msg.content_received, req->server_resp_msg.content_length);
+	}
 
 	// if no connection associated with this packet
 	if (con->server_state == TCP_CONNTRACK_NONE) {
 		// setup so destination is http server
-		if (__pkt_from_server(pkt)) {
+		if (from_server) {
 			/* swap so dst port is http */
 			con->tuple.src_port = pkt->tuple.dst_port;
 			con->tuple.dst_port = pkt->tuple.src_port;
@@ -1036,7 +1084,7 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 	}
 	if (unlikely(con->not_http)) {
 		DBG(1, " Non HTTP connection\n");
-		if (__pkt_from_server(pkt)) {
+		if (from_server) {
 			con->server_state = __HttpConn_checkFlags(con, pkt, con->server_state);
 		} else {
 			con->client_state = __HttpConn_checkFlags(con, pkt, con->client_state);
@@ -1054,9 +1102,9 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 		return min_state;
 	}
 
-	if (__pkt_from_server(pkt)) {
+	if (from_server) {
 		delta = (int) (pkt->seq_num - con->server_seq_num);
-		DBG(5, "Pkt from server  server_seq_num=%u  pkt_seq_num=%u delta=%d\n",
+		DBG(4, "Pkt from server  server_seq_num=%u  pkt_seq_num=%u delta=%d\n",
 			con->server_seq_num, pkt->seq_num, delta);
 		
 		if (pkt->tcp_payload_length) {
@@ -1072,15 +1120,24 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 				DBG(1, "repeated or duplicate packet seq_num=%u server_seq_num=%u\n", pkt->seq_num, con->server_seq_num);
 				return MIN(con->server_state, con->client_state);
 			} else if (delta > 1) {
-				DBG(1, "Save packet from server\n");
-				__pkt_list_insert(con->server_buffer, pkt);
+
+				DBG(1, "Save packet from server delta=%d\n", delta);
+
+				__pkt_list_insert(con, req, pkt, from_server, delta);
+
+				if (ubi_dlCount(con->server_buffer) > WfConfig_getPktBuffSize(con->config)) {
+					WARN("Out of order server buffer full reset connection.\n");
+					Ipv4TcpPkt_resetTcpCon(pkt);
+				}
+
 				return -EBUSY;
 				
 			} else {
 				con->server_seq_num = pkt->seq_num + pkt->tcp_payload_length;
 				con->server_ack_num = pkt->ack_num;
 // 				__processs_pkt_payload(con, pkt);
-				__processs_response_payload(con, pkt);
+				__processs_response_payload(con, req, pkt);
+// 				con->throttling = 0;
 
 			}
 		}
@@ -1103,8 +1160,7 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 
 		if (unlikely(con->server_data_altered
 			&& (con->client_state < TCP_CONNTRACK_CLOSE_WAIT)
- 			&&	!TCP_FLAG_SET(pkt, pkt->ip_hdr_len + TCP_FLAG_OFFSET,
-					(TCP_FLAG_FIN | TCP_FLAG_RST)) ) ) {
+			&&	!(pkt->tcp_flags & (TCP_FLAG_FIN | TCP_FLAG_RST)) ) )  {
 			DBG(5, "reset connection with packet from client on modified connection \n");
 			Ipv4TcpPkt_resetTcpCon(pkt);
 			return MIN(con->server_state, con->client_state);
@@ -1119,13 +1175,17 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 				return MIN(con->server_state, con->client_state);
 			} else if (delta > 1) {
 				DBG(1, "Save packet from client\n");
-				__pkt_list_insert(con->client_buffer, pkt);
+				__pkt_list_insert(con, req, pkt, from_server, delta);
+
+				if (ubi_dlCount(con->client_buffer) > WfConfig_getPktBuffSize(con->config)) {
+					ERROR("Out of order client buffer full reset connection.\n");
+					Ipv4TcpPkt_resetTcpCon(pkt);
+				}
 				return -EBUSY;
 			} else {
 				con->client_seq_num = pkt->seq_num + pkt->tcp_payload_length;
 				con->client_ack_num = pkt->ack_num;
-// 				__processs_pkt_payload(con, pkt);
-				__processs_req_payload(con, pkt);
+				__processs_req_payload(con, req, pkt);
 			}
 		}
 		DBG(5, "Pkt from client  client_seq_num=%u  pkt_seq_num=%u delta=%d\n"
