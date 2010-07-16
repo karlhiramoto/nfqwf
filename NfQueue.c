@@ -409,7 +409,7 @@ static int __NfQueue_process_pkt(struct NfQueue* nfq_wf, struct Ipv4TcpPkt *pkt)
 
 static void __NfQueue_check_packet_id(struct NfQueue* nfq_wf, struct Ipv4TcpPkt *pkt)
 {
- 	struct nfnl_queue_msg *lost_msg;
+	struct nfnl_queue_msg *lost_msg;
 	uint32_t next_packet_id = nfq_wf->last_packet_id + 1;
 
 	if (pkt->packet_id > next_packet_id) {
@@ -615,7 +615,7 @@ static void* __NfQueue_main(void *arg)
 	}
 	nfq_wf->nl_queue = nfnl_queue_alloc();
 	nfnl_queue_set_group(nfq_wf->nl_queue, nfq_wf->q_id);
-
+	nfnl_queue_set_maxlen(nfq_wf->nl_queue, 5000);
 	nfnl_queue_set_copy_mode(nfq_wf->nl_queue, NFNL_QUEUE_COPY_PACKET);
 
 	nfnl_queue_set_copy_range(nfq_wf->nl_queue, 0xFFFF);
