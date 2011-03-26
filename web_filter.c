@@ -188,8 +188,13 @@ static struct libnl_cache_ctx * init_libnl_cache(void)
 		ERROR_FATAL("Unable to connect netlink socket: %d %s\n",
 			err, nl_geterror(err));
 
-	rtnl_link_alloc_cache(cache_ctx->rt_sock, AF_UNSPEC, &cache_ctx->link_cache);
+	if ( (err = rtnl_link_alloc_cache(cache_ctx->rt_sock, AF_UNSPEC, &cache_ctx->link_cache)) < 0) {
+			ERROR_FATAL("Unable to allocate link cache %d %s\n", err, nl_geterror(err));
+	}
+
 	nl_cache_mngt_provide(cache_ctx->link_cache);
+
+	DBG(1," link cache allocated\n");
 
 	return cache_ctx;
 }
@@ -256,7 +261,7 @@ static int pidfile_chk(const char *pidfile) {
 
 static void print_help(void)
 {
-	printf(" Usage opts :   [ -d ] [-v | -v N] < -c config.xml >  [ -p /tmp/pid-file.pid ] [ -L/path ] \n");
+	printf(" Usage opts :   [ -d ] [-v | -v N] < -c config.xml >  [ -p /tmp/pid-file.pid ] [ -L/path ] -q <N> [ -Q <N> ]\n");
 	printf(" -h      this help\n");
 	printf(" -v      verbose\n");
 	printf(" -v N    verbose level N (0-9)\n");
