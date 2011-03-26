@@ -1,3 +1,25 @@
+/*
+Copyright (C) <2010-2011> Karl Hiramoto <karl@hiramoto.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 #include <stdlib.h>
 #include <errno.h>
 
@@ -18,7 +40,7 @@ static struct Filter_ops *get_fobj_ops(struct Filter *fobj)
 {
 	if (!fobj->fo_ops)
 		BUG();
-	
+
 	return fobj->fo_ops;
 }
 
@@ -28,7 +50,7 @@ static struct Object_ops *get_obj_ops(struct Filter *fobj)
 
 	if (!fobj->obj_ops)
 		BUG();
-	
+
 	return fobj->obj_ops;
 }
 #endif
@@ -51,7 +73,7 @@ struct Filter *Filter_alloc(struct Filter_ops *fo_ops)
 		return NULL;
 
 	DBG(4, "Allocated new filter object %p\n", new_filter);
-	
+
 	new_filter->fo_ops = fo_ops;
 	if (fo_ops->foo_constructor) {
 		DBG(4, "New filter object %p has constructor\n", new_filter);
@@ -71,8 +93,8 @@ void Filter_free(struct Filter **obj_in)
 
 	obj = *obj_in;
 	fops = get_fobj_ops(obj);
-	
-	
+
+
 	if (obj->refcount > 0)
 		DBG(1, "Warning: Freeing object in use... refcount=%d\n", obj->refcount);
 
@@ -81,7 +103,7 @@ void Filter_free(struct Filter **obj_in)
 		fops->foo_destructor(obj);
 
 	DBG(4, "Freed filter object %p\n", obj);
-	
+
 	/* call parents destructor */
 	Object_free((struct Object**)obj_in);
 }
@@ -118,7 +140,7 @@ void Filter_put(struct Filter **obj_in)
 	obj->refcount--;
 	DBG(4, "Returned object reference '%s' %p, %d remaining\n",
 		obj->fo_ops->ops->obj_type, obj, obj->refcount);
-	       
+
 	if (obj->refcount < 0)
 		BUG();
 

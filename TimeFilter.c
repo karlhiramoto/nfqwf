@@ -1,4 +1,26 @@
-#define _GNU_SOURCE 
+/*
+Copyright (C) <2010-2011> Karl Hiramoto <karl@hiramoto.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
+#define _GNU_SOURCE
 #include <string.h>
 #include <stdlib.h>
 
@@ -26,7 +48,7 @@
 struct TimeFilter
 {
 	FILTER_OBJECT_COMMON
-	bool dow[DAYS_IN_WEEK]; /* Days of week */ 
+	bool dow[DAYS_IN_WEEK]; /* Days of week */
 	uint8_t from_min; /* 0 to 23 */
 	uint8_t from_hour; /* 0 to 59 */
 	uint8_t to_min; /* 0 to 23 */
@@ -66,7 +88,7 @@ static int TimeFilter_load_from_xml(struct Filter *fobj, xmlNode *node)
 		filt->from_hour = 0;
 		filt->from_min = 0;
 	}
-	
+
 	prop = xmlGetProp(node, BAD_CAST "to");
 	if (prop) {
 		ret = sscanf((const char*) prop, "%hhd:%hhd", &filt->to_hour, &filt->to_min);
@@ -144,7 +166,7 @@ static int TimeFilter_matches_req(struct Filter *fobj, struct HttpReq *req)
 	#ifdef PRIV_CON_DATA
 	struct HttpConn *con = req->con;
 	void *data;
-	
+
 	// every request in the same connection will be to the same host so use saved value.
 	data = HttpConn_getPrivData(con, Filter_getObjId(fobj));
 	if (!data) {
@@ -172,7 +194,7 @@ static struct Filter_ops TimeFilter_obj_ops = {
 	.foo_load_from_xml  = TimeFilter_load_from_xml,
 #if PRIV_CON_DATA
 	.foo_request_start  = TimeFilter_start_req,
-#endif	
+#endif
 	.foo_matches_req    = TimeFilter_matches_req,
 };
 

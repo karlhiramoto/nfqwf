@@ -1,3 +1,25 @@
+/*
+Copyright (C) <2010-2011> Karl Hiramoto <karl@hiramoto.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 #ifndef OBJECT_H
 #define OBJECT_H
 
@@ -45,28 +67,28 @@ struct Object_ops
 {
 	/** Unique type name of the object */
 	char * obj_type;
-	
+
 	/** Size of object */
 	size_t obj_size;
-	
+
 	/**
 	* Optional callback to init/allocate any private data
 	*/
 	int (*obj_constructor)(struct Object *);
-	
+
 	/**
 	* Optional callback to free any private data
 	*/
 	int (*obj_destructor)(struct Object *);
-	
+
 	/*optional callback to clone private data */
 	int (*obj_clone)(struct Object *dst, struct Object *src);
-	
+
 	/** optional callback to compare two objects
 	 @return 0 if equal. -1, 1 see man qsort()
 	*/
 	int (*obj_compare)(struct Object *dst, struct Object *src);
-	
+
 };
 
 struct Object *Object_alloc(struct Object_ops *ops);

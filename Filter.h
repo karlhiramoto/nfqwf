@@ -1,3 +1,25 @@
+/*
+Copyright (C) <2010-2011> Karl Hiramoto <karl@hiramoto.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 #ifndef FILTER_OBJECT_H
 #define FILTER_OBJECT_H
 
@@ -85,15 +107,15 @@ struct Filter_ops
 	int (*foo_stream_filter)(struct Filter *obj, struct HttpReq *,
 			const unsigned char *data_stream, unsigned int length);
 
-	
+
 	/**
-	* @brief file filer for Anti-virus or other file contents filter 
+	* @brief file filer for Anti-virus or other file contents filter
 	* @param obj  Filter object
 	* @param HttpReq Http Request we are going to filter
 	* @returns -1 on error, or enum Action  see  @link Action
 	*/
 	int (*foo_file_filter)(struct Filter *obj, struct HttpReq *);
-	
+
 	/**
 	* @brief Load filter object from XML config
 	* @param obj  Filter object
@@ -101,7 +123,7 @@ struct Filter_ops
 	*             may have attributes and/or children.
 	*/
 	int (*foo_load_from_xml)(struct Filter *obj, xmlNode *node);
-	
+
 	/*for debug */
 	int (*foo_print)(struct Filter *);
 };

@@ -1,3 +1,25 @@
+/*
+Copyright (C) <2010-2011> Karl Hiramoto <karl@hiramoto.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 #include <stdlib.h>
 
 #include "Filter.h"
@@ -27,13 +49,13 @@ void FilterList_del(struct FilterList **fl_in)
 
 	if (!fl || !fl_in)
 		BUG();
-	
+
 	for (i = 0; fl->list && fl->list[i]; i++) {
 		fo = fl->list[i];
 		DBG(5, " free filter %d = %p\n", i, fo);
 		Filter_put(&fo);
 	}
-	
+
 	free(fl->list);
 	free(*fl_in);
 	*fl_in = NULL;

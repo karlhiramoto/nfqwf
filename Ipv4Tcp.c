@@ -1,3 +1,25 @@
+/*
+Copyright (C) <2010-2011> Karl Hiramoto <karl@hiramoto.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 #include <stdint.h>
 #include <netinet/in.h>
 #include <stdlib.h>
@@ -137,7 +159,7 @@ unsigned short get_cksum16(const unsigned short *data, int len, int csum)
 	int sum               = csum;
 	const unsigned short *w     = data;
 	unsigned short answer = 0;
-	
+
 	/*
 	* Our algorithm is simple, using a 32 bits accumulator (sum), we add
 	* sequential 16 bit words to it, and at the end, fold back all the
@@ -148,7 +170,7 @@ unsigned short get_cksum16(const unsigned short *data, int len, int csum)
 		sum   += *w++;
 		nleft -= 2;
 	}
-	
+
 	/* mop up an odd byte, if necessary */
 	if ( nleft == 1 ) {
 // 		*(unsigned char *) (&answer) = *(unsigned char *) w;
@@ -159,7 +181,7 @@ unsigned short get_cksum16(const unsigned short *data, int len, int csum)
 	}
 
 // 	printf("checksum sum1=%hu=0x%hx high16=%hu=0x%hx\n", sum, sum, (sum >> 16), (sum >> 16));
-	
+
 	/* add back carry outs from top 16 bits to low 16 bits */
 	sum    =  (sum >> 16) + (sum & 0xffff); /* add hi 16 to low 16 */
 // 	printf("checksum sum2=%hu=0x%hx\n", sum, sum);
@@ -178,7 +200,7 @@ void print_hex(const unsigned char* payload, int len)
 	int offset = 0;
 	int i;
 	const int WIDTH = 16;
-	
+
 	while (len) {
 		printf("Offset Ox%04X: ", offset);
 		for (line_pos = 0; len && line_pos < WIDTH; line_pos++) {
@@ -194,7 +216,7 @@ void print_hex(const unsigned char* payload, int len)
 			if (i % 4 == 0)
 				printf("  ");
 		}
-		
+
 		offset -= line_pos;
 		printf("   ");
 		for ( ; line_pos ; line_pos--) {
@@ -202,10 +224,10 @@ void print_hex(const unsigned char* payload, int len)
 				printf("%c", payload[offset]);
 			else
 				printf(" ");
-			
+
 			offset++;
 		}
-		
+
 		printf("\n");
 	}
 }
@@ -222,13 +244,13 @@ void Ipv4TcpPkt_resetTcpCksum(unsigned char *ip_pkt, unsigned int ip_pkt_size, u
 
 	sptr = (unsigned short *) &ip_pkt[ip_hdr_len + 16];
 	*sptr = 0; // set cksum to 0 to recalc
-	
+
 	sum = ((unsigned short) *((unsigned short*) &ip_pkt[12])) + // SRC
 		((unsigned short) *((unsigned short*) &ip_pkt[14])) +
 		((unsigned short) *((unsigned short*) &ip_pkt[16])) + // DST
 		((unsigned short) *((unsigned short*) &ip_pkt[18])) +
 		htons(IPPROTO_TCP) +  htons(ip_pkt_size - ip_hdr_len);
-	
+
 	cksum = get_cksum16((unsigned short *)&ip_pkt[ip_hdr_len],
 					ip_pkt_size - ip_hdr_len, sum);
 
@@ -262,7 +284,7 @@ int Ipv4TcpPkt_printPkt(struct Ipv4TcpPkt *pkt, FILE *stream)
 	char src_buf[20];
 	char dst_buf[20];
 	int tcp_flags_loc;
-	
+
 	inet_ntop(AF_INET, &pkt->ip_data[12], src_buf, sizeof(src_buf));
 	inet_ntop(AF_INET, &pkt->ip_data[16], dst_buf, sizeof(dst_buf));
 	fprintf(stream, "IP: src=%s dst=%s hdr_len=%hd=0x%hx ip_cksum=%hu=0x%hx ip_len=%hu=0x%hx\n",
@@ -277,7 +299,7 @@ int Ipv4TcpPkt_printPkt(struct Ipv4TcpPkt *pkt, FILE *stream)
  			(pkt->ip_data[6] >> 4),
 			ntohs((uint16_t) *((uint16_t*) &pkt->ip_data[6])) & 0x0FFF,
 		  pkt->ip_data[8], pkt->ip_data[9]);
-					
+
 	fprintf(stream, "TCP: sport=%hu dport=%hu cksum=0x%04X\n",
 		pkt->tuple.src_port, pkt->tuple.dst_port, pkt->tcp_checksum);
 
@@ -287,7 +309,7 @@ int Ipv4TcpPkt_printPkt(struct Ipv4TcpPkt *pkt, FILE *stream)
 		pkt->ack_num, pkt->ack_num,
 		pkt->tcp_checksum, pkt->tcp_checksum,
 		pkt->tcp_payload_length, pkt->tcp_payload_length);
-			
+
 	tcp_flags_loc = pkt->ip_hdr_len+TCP_FLAG_OFFSET;
 	fprintf(stream, "TCP: CWR=%d ECE=%d URG=%d ACK=%d PSH=%d RST=%d SYN=%d FIN=%d\n",
 		(((int) *((int*) &pkt->ip_data[tcp_flags_loc])) & TCP_FLAG_CWR) ? 1:0,
@@ -382,7 +404,7 @@ int Ipv4TcpPkt_parseIpPayload(struct Ipv4TcpPkt *pkt)
 			pkt->ip_packet_length - hdr_len, sum);
 
 	if (DEBUG_LEVEL > 5) {
-		Ipv4TcpPkt_printPkt(pkt, stdout);	
+		Ipv4TcpPkt_printPkt(pkt, stdout);
 		print_hex(payload, pkt->ip_packet_length);
 	}
 
@@ -401,12 +423,12 @@ int Ipv4TcpPkt_parseNlHdrMsg(struct Ipv4TcpPkt *pkt, struct nlmsghdr *nlh)
 	struct nlattr *tb[NFQA_MAX+1];
 	struct nlattr *attr;
 	int err;
-		
+
 	pkt->nl_qmsg = nfnl_queue_msg_alloc();
 
 	if (!pkt->nl_qmsg)
 		return -ENOMEM;
-		
+
 	err = nlmsg_parse(nlh, sizeof(struct nfgenmsg), tb, NFQA_MAX,
 			queue_policy);
 
@@ -422,7 +444,7 @@ int Ipv4TcpPkt_parseNlHdrMsg(struct Ipv4TcpPkt *pkt, struct nlmsghdr *nlh)
 
 		pkt->packet_id = ntohl(hdr->packet_id);
 		DBG(3, "packet_id=%d\n", pkt->packet_id);
-		
+
 		nfnl_queue_msg_set_packetid(pkt->nl_qmsg, ntohl(hdr->packet_id));
 		if (hdr->hw_protocol)
 			nfnl_queue_msg_set_hwproto(pkt->nl_qmsg, hdr->hw_protocol);

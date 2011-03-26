@@ -1,3 +1,25 @@
+/*
+Copyright (C) <2010-2011> Karl Hiramoto <karl@hiramoto.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 #include <stdlib.h>
 
 #ifdef HAVE_CONFIG_H
@@ -7,7 +29,7 @@
 #include "Object.h"
 #include "nfq_wf_private.h"
 
-/// Object ID sequence.  NOTE  object allocation for now only done by one thread so no mutex needed yet. 
+/// Object ID sequence.  NOTE  object allocation for now only done by one thread so no mutex needed yet.
 static unsigned int id_seq = 0;
 
 static struct Object_ops *get_obj_ops(struct Object *obj)
@@ -43,13 +65,13 @@ struct Object *Object_alloc(struct Object_ops *ops)
 		ops->obj_constructor(new_obj);
 
 	DBG(4, "Allocated new object %p name='%s'\n", new_obj, ops->obj_type);
-	
+
 	return new_obj;
 }
 
 /**
 * free an object
-* @brief call object destructor.  
+* @brief call object destructor.
 * @brief Note this should only be called from Object_put() or an inherited _put()
 * @arg obj  pointer to pointer to object so we can return NULL pointer of free'd memory
 */

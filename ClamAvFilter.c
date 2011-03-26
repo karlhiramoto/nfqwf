@@ -1,4 +1,26 @@
-#define _GNU_SOURCE 
+/*
+Copyright (C) <2010-2011> Karl Hiramoto <karl@hiramoto.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
+#define _GNU_SOURCE
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -51,7 +73,7 @@ struct ClamAvFilter
 	unsigned int skip_size;
 
 	/// if set, path to clamd socket. If NULL use default
-	char *socket_path; 
+	char *socket_path;
 };
 
 #define MAX_VIRUS_URL 512
@@ -91,7 +113,7 @@ static int ClamAvFilter_load_from_xml(struct Filter *fobj, xmlNode *node)
 {
 	struct ClamAvFilter *fo = (struct ClamAvFilter *) fobj; /* filter object */
 	xmlChar *prop = NULL;
-	
+
 	DBG(5, "Loading XML config\n");
 
 	prop = xmlGetProp(node, BAD_CAST SKIP_SIZE);
@@ -139,7 +161,7 @@ static void add_virus_to_cache(struct HttpReq *req, const char *virus_name)
 {
 	DBG(5, "virus %d '%s' at %s\n", virus_cache_count, virus_name, req->url);
 	pthread_rwlock_wrlock(&cache_lock);
-	
+
 	virus_cache = realloc(virus_cache, sizeof(struct virus_cache_item) * (virus_cache_count+1));
 	if (!virus_cache) {
 		ERROR_FATAL("realloc error \n");
@@ -200,7 +222,7 @@ static int __send_clamd_cmd(int clamd_fd, const char *cmd,
 	ret = select(clamd_fd +1, NULL, &write_set, NULL, &timeout);
 
 	if (FD_ISSET(clamd_fd, &write_set)) {
-		
+
 		DBG(5, "Sending command len=%d\n", len);
 		if(send(clamd_fd, cmd, len, 0) < 0) {
 			ERROR( "Unable to send command to clamd\n");
@@ -220,7 +242,7 @@ static int clamd_connect(struct ClamAvFilter *fo) {
 	const char *sock_path;
 
 	if (fo->socket_path) {
-		// use configured socket 
+		// use configured socket
 		sock_path = fo->socket_path;
 	} else {
 		// use default
@@ -228,10 +250,10 @@ static int clamd_connect(struct ClamAvFilter *fo) {
 	}
 
 	memset((char *) &server, 0, sizeof(server));
-	
+
 	server.sun_family = AF_UNIX;
 	strncpy(server.sun_path, sock_path, sizeof(server.sun_path));
-	
+
 	if((sockd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
 		ERROR( "Unable to create clamd socket: %m\n");
 		return -1;
@@ -240,11 +262,11 @@ static int clamd_connect(struct ClamAvFilter *fo) {
 	//FIXME TODO move this up to make a non-blocking connect
 // 	flags = fcntl(sockd, F_GETFL);
 // 	flags = fcntl(sockd, F_SETFL, flags | O_NONBLOCK);
-// 
+//
 // 	if (flags == -1) {
 // 		ERROR( "Unable to make socket non-blocking: %m\n");
 // 	}
-// 
+//
 
 	if(connect(sockd, (struct sockaddr *) &server, sizeof(struct sockaddr_un)) < 0) {
 		close(sockd);
@@ -252,7 +274,7 @@ static int clamd_connect(struct ClamAvFilter *fo) {
 		return -1;
 	}
 	DBG(5, "connected to  %d  socket='%s'\n", sockd, sock_path);
-	
+
 
 	return sockd;
 }
@@ -290,7 +312,7 @@ static int clamd_get_result(int sockd, struct HttpReq *req) {
 			add_virus_to_cache(req, name);
 			HttpReq_setRejectReason(req, name);
 		}
-		
+
 		return Action_virus;
 	}
 
@@ -366,7 +388,7 @@ static int clamd_send_chunk(int clamd_fd, const void *data, unsigned int data_le
 	iov[0].iov_len = 4;
 	iov[1].iov_base = (void*) data;
 	iov[1].iov_len = data_len;
-	
+
 	memset(&msg, 0, sizeof(msg));
 
 	msg.msg_iov = &iov[0];
@@ -405,7 +427,7 @@ static int clamd_scan_fd(int clamd_fd, struct HttpReq *req) {
 	iov[0].iov_base = dummy;
 	iov[0].iov_len = 1;
 	memset(&msg, 0, sizeof(msg));
-	
+
 	/* Insert FD into msg payload */
 	msg.msg_control = fdbuf;
 	msg.msg_iov = iov;
@@ -483,7 +505,7 @@ static int ClamAvFilter_streamFilter(struct Filter *fobj, struct HttpReq *req,
 
 	// make sure clamd not deadlocked so read from socket, 0 timeout to poll
 	__wait_for_clamd_response(ctx, req, 0);
-	
+
 	timeout.tv_sec = 5;
 	timeout.tv_usec = 0;
 
@@ -509,7 +531,7 @@ static int ClamAvFilter_streamFilter(struct Filter *fobj, struct HttpReq *req,
 // 			return ret;
 // 		}
 // 	}
-	
+
 	if (FD_ISSET(ctx->clamd_fd, &write_set)) {
 		if (length && req->server_resp_msg.state == msg_state_complete) {
 			end_of_stream = true;
@@ -575,7 +597,7 @@ static struct Filter_ops ClamAvFilter_obj_ops = {
 	.foo_request_start  = ClamAvFilter_initClamdCtx,
 	.foo_stream_filter  = ClamAvFilter_streamFilter,
 #else
-	.foo_matches_req = ClamAvFilter_checkCache, 
+	.foo_matches_req = ClamAvFilter_checkCache,
 	.foo_file_filter = ClamAvFilter_fileFilter,
 #endif
 };
@@ -600,7 +622,7 @@ static void __exit ClamAvFilter_exit(void)
 	pthread_rwlock_wrlock(&cache_lock);
 
 	for (i = 0; i < virus_cache_count; i++) {
-		
+
 		if (virus_cache[i].url)
 			free(virus_cache[i].url);
 

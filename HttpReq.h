@@ -1,3 +1,25 @@
+/*
+Copyright (C) <2010-2011> Karl Hiramoto <karl@hiramoto.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 #ifndef HTTP_REQ_H
 #define HTTP_REQ_H 1
 
@@ -52,7 +74,7 @@ struct HttpConn;
 
 #define HTTP_REQ_MAX_CATEGORY_IDS 5
 
-/* Struct to model rfc 2616 messages to/from server and client*/ 
+/* Struct to model rfc 2616 messages to/from server and client*/
 struct http_msg {
 	enum msg_state state;
 	uint64_t content_length;  /// from 'Content-Length:'
@@ -76,7 +98,7 @@ struct HttpReq {
 	struct timeval start_time; /** time the request started */
 	struct http_msg client_req_msg;  /// data coming from client HTTP Request
 	struct http_msg server_resp_msg;  /// data coming from server HTTP response
-	
+
 	/// NOTE  consider putting virus, phishing, malware, category, etc
 	/// into some kind of attributes list,
 	/// and each filter object can set the attributes it wants.

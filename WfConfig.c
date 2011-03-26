@@ -1,3 +1,24 @@
+/*
+Copyright (C) <2010-2011> Karl Hiramoto <karl@hiramoto.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
 
 #ifdef HAVE_CONFIG_H
 #include "nfq-web-filter-config.h"
@@ -71,7 +92,7 @@ void WfConfig_get(struct WfConfig *conf) {
 
 /** Release reference counter */
 void WfConfig_put(struct WfConfig **conf) {
-	
+
 	DBG(4, "removing Config reference to %p refcount = %d\n",
 		*conf, (*conf)->refcount);
 
@@ -121,7 +142,7 @@ static struct Object_ops obj_ops = {
 	.obj_size           = sizeof(struct WfConfig),
 	.obj_constructor    = WfConfig_constructor,
 	.obj_destructor     = WfConfig_destructor,
-	
+
 };
 
 static struct WfConfig* WfConfig_alloc(struct Object_ops *ops)
@@ -142,14 +163,14 @@ struct WfConfig* WfConfig_new(void)
 
 //TODO pass XML arg, or filename
 int WfConfig_loadConfig(struct WfConfig* conf, const char *config_xml_file)
-{	
+{
 	int ret;
 	xmlDoc *doc = NULL;
 	xmlNode *root_node = NULL;
 	xmlChar *prop = NULL;
 	struct stat tmp_dir_stat;
 	char *cmd;
-	
+
 	if (!config_xml_file) {
 		ERROR("Invalid config file\n");
 		return -EINVAL;
@@ -259,7 +280,7 @@ int WfConfig_loadConfig(struct WfConfig* conf, const char *config_xml_file)
 	return 0;
 }
 
-//TODO  think about making this and other one liners a static inline in the .h 
+//TODO  think about making this and other one liners a static inline in the .h
 struct ContentFilter * WfConfig_getContentFilter(struct WfConfig* conf)
 {
  	if (!conf) {
