@@ -1,15 +1,16 @@
 Dependencies:
 	libxml2 http://www.xmlsoft.org/
 	ubiqx for linked list http://ubiqx.org/modules.html
-	libnl 2.x  http://www.infradead.org/~tgr/libnl/
-		NOTE as of Jun 2010 you need to get the source from GIT
-		http://git.kernel.org/?p=libs/netlink/libnl.git;a=summary
+	libnl 3.x  http://www.infradead.org/~tgr/libnl/
+
 
 to compile:
 
 autoreconf -fi
 ./configure
 make
+
+See Example configurations in examples/
 
 
 To generate developer doxygen docs in doc/ dir:
