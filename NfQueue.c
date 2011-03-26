@@ -352,7 +352,7 @@ static int __NfQueue_process_pkt(struct NfQueue* nfq_wf, struct Ipv4TcpPkt *pkt)
 		if (pkt->tcp_flags &
 			(TCP_FLAG_PSH | TCP_FLAG_RST |TCP_FLAG_FIN | TCP_FLAG_ACK )) {
 
-			DBG(1, "Ignore packet no connection found q_id=%d\n", nfq_wf->q_id);
+			DBG(2, "Ignore packet no connection found q_id=%d\n", nfq_wf->q_id);
 
 			if (pkt->tcp_payload_length) {
 				nfnl_queue_msg_set_verdict(pkt->nl_qmsg, NF_DROP);
@@ -625,6 +625,8 @@ static void* __NfQueue_main(void *arg)
 	}
 
 	max_fd = fd = nl_socket_get_fd(nfq_wf->nf_sock);
+
+	// NOTE not sure if we can make this bigger, or if we should
 	nl_socket_set_buffer_size(nfq_wf->nf_sock, 1024*127, 1024*127);
 
 	if (nfq_wf->exit_pipe[0] > fd)
