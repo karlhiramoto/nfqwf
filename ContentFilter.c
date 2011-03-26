@@ -46,7 +46,7 @@ void ContentFilter_put(struct ContentFilter **cf) {
 
 	DBG(4, "removing CF reference to %p refcount = %d\n",
 		*cf, (*cf)->refcount);
-	
+
 	Object_put((struct Object**)cf);
 }
 
@@ -78,7 +78,7 @@ int ContentFilter_destructor(struct Object *obj)
 	free(cf->rule_list);
 	DBG(5, " Free FilterList objects\n");
 	FilterList_del(&(cf->obj_list));
-	
+
 	return 0;
 }
 
@@ -144,7 +144,7 @@ static int ContentFilter_loadRuleNode(struct ContentFilter* cf, xmlNode *rule_no
 	int mark;
 	int mask;
 	char *endptr;
-	
+
 	if (!rule_node)
 		return -EINVAL;
 
@@ -178,7 +178,7 @@ static int ContentFilter_loadRuleNode(struct ContentFilter* cf, xmlNode *rule_no
 		}
 		xmlFree(prop);
 	}
-	
+
 	rule = Rule_new();
 	rule->log = log;
 	Rule_setId(rule, id);
@@ -236,7 +236,7 @@ static int ContentFilter_loadRuleNode(struct ContentFilter* cf, xmlNode *rule_no
 				  Rule_getId(rule), FILTER_ID_XML_PROP);
 			continue;
 		}
-		
+
 		ret = sscanf((char *) prop, "%u", &id);
 		if (ret < 1) {
 			ERROR(" Parsing %s in rule %d\n",
@@ -471,11 +471,11 @@ struct Rule * __get_first_rule_with_filter(struct ContentFilter* cf, struct Filt
 {
 	struct Rule *rule;
 	int i;
-	
+
 	/* for each rule */
 	for (i = 0; i < cf->rule_list_count; i++) {
 		rule = cf->rule_list[i];
-		
+
 		if (Rule_containsFilter(rule, fo, NULL))  {
 			return rule;
 		}
@@ -505,7 +505,7 @@ static int stream_filter_cb(struct Filter *fo, void *data)
 		}
 
 	}
-	
+
 	return 0;
 }
 
@@ -525,7 +525,7 @@ int ContentFilter_filterStream(struct ContentFilter* cf, struct HttpReq *req,
 		DBG(5, "Starting length=%d\n", length);
 
 		rc = FilterList_foreach(cf->obj_list, &args, stream_filter_cb);
-		
+
 		if (args.filter_matched) {
 			rule = __get_first_rule_with_filter(cf, args.filter_matched);
 			if (!rule) {
@@ -599,7 +599,7 @@ bool ContentFilter_hasFileFilter(struct ContentFilter* cf)
 static void diff_timeval(struct timeval *t1, struct timeval *t2, struct timeval *diff){
 	diff->tv_sec= t1->tv_sec - t2->tv_sec;
 	diff->tv_usec= t1->tv_usec - t2->tv_usec;
-	
+
 	if (diff->tv_sec && diff->tv_usec < 0) {
 		diff->tv_sec--;
 		diff->tv_usec+=1000000;
@@ -630,8 +630,8 @@ void ContentFilter_logReq(struct ContentFilter* cf, struct HttpReq *req)
 	diff_timeval(&now, &req->start_time, &delta_time);
 	//TODO for each log plugin.  Call log.
 	syslog(LOG_INFO, "WF matched rule id=%d url='%s' verdict=%d length=%llu received=%llu duration=%d.%04d",
-		Rule_getId(rule), req->url, rule->action, req->server_resp_msg.content_length,
-		req->server_resp_msg.content_received,
+		Rule_getId(rule), req->url, rule->action, (long long) req->server_resp_msg.content_length,
+		(long long) req->server_resp_msg.content_received,
 		(int) delta_time.tv_sec, (int) delta_time.tv_usec/1000);
 }
 

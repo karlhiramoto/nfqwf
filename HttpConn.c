@@ -63,7 +63,7 @@ static struct HttpReq * __add_request_new_to_list(struct HttpConn *con)
 static struct HttpReq * __find_request(struct HttpConn *con, unsigned id)
 {
 	struct HttpReq* req = NULL;
-	
+
 	/*for each object in list */
 	for (req = (struct HttpReq *)ubi_dlFirst(con->request_list);
 		req; req = (struct HttpReq *)ubi_dlNext(req)) {
@@ -88,12 +88,12 @@ struct HttpConn* HttpConn_new(struct WfConfig *config)
 	if (!con->request_list)
 		goto free_con;
 	con->request_list = ubi_dlInitList(con->request_list);
-	
+
 	con->server_buffer = malloc(sizeof(ipv4_tcp_pkt_list_t));
 	if (!con->server_buffer)
 		goto free_req_list;
 	con->server_buffer = ubi_dlInitList(con->server_buffer);
-	
+
 	con->client_buffer = malloc(sizeof(ipv4_tcp_pkt_list_t));
 	if (!con->client_buffer)
 		goto free_server_buffer;
@@ -228,7 +228,7 @@ void HttpConn_del(struct HttpConn **con_in)
 		DBG(5, "Free http req %p id=%d next=%p\n", req, req->id, next_req);
 		HttpReq_del(&req);
 		DBG(5, "Freed http req %p\n", req);
-	
+
 	}
 	free (con->request_list);
 
@@ -237,7 +237,7 @@ void HttpConn_del(struct HttpConn **con_in)
 
 	// free private data
 	PrivData_del(&con->priv_data);
-	
+
 	free (con);
 	*con_in = NULL;
 }
@@ -284,7 +284,7 @@ int __HttpConn_checkFlags(struct HttpConn* con, struct Ipv4TcpPkt *pkt,
 					next_tcp_state = TCP_CONNTRACK_LAST_ACK;
 				}
 			}
-				
+
 			break;
 		case TCP_CONNTRACK_FIN_WAIT:
 		case TCP_CONNTRACK_CLOSE_WAIT:
@@ -391,7 +391,7 @@ int __gen_error_packet(struct HttpReq *req, struct Ipv4TcpPkt *pkt,
  	sptr = (unsigned short *) &new_ip_pkt[2];  // IP Packet size
  	*sptr = htons(new_pkt_size); // set new size
 
-	DBG(6, "new_pkt_size=%d sptr=0x%hx\n", new_pkt_size, *sptr);		
+	DBG(6, "new_pkt_size=%d sptr=0x%hx\n", new_pkt_size, *sptr);
 
 	sptr = (unsigned short *) &new_ip_pkt[10];  // IP header checksum8
 	*sptr = 0;
@@ -482,7 +482,7 @@ static int __processs_req_payload(struct HttpConn* con, struct HttpReq *req, str
 		case msg_state_new:
 			DBG(5, "Processing new request packet\n");
 			if (pkt->tcp_payload_length < 5)  {
-				// Not posssible to "GET /\n" in less than 5 chars 
+				// Not posssible to "GET /\n" in less than 5 chars
 				req->client_req_msg.state = msg_state_partial;
 				break;
 			}
@@ -656,18 +656,18 @@ static int __processs_req_payload(struct HttpConn* con, struct HttpReq *req, str
 			}
 
 			DBG(5, "no more lines ret=%d len=%d\n", ret, len);
-			
+
 			two_eol_found:
 			if (ret == TWO_EOL) {
-				DBG(3, "CRLFCRLF request headers complete len=%d req_len=%llu\n", len, msg->content_length);
+				DBG(3, "CRLFCRLF request headers complete len=%d req_len=%llu\n", len, (long long) msg->content_length);
 				if (msg->content_length) {
 					msg->content_received +=len;
 					msg->state = msg_state_read_content;
 
 					if (msg->content_received >= msg->content_length) {
 						DBG(5, "POST/PUT/OPTIONS request content finished received=%llu Content-length=%llu\n",
-							msg->content_received, msg->content_length);
-						
+							(long long) msg->content_received, (long long) msg->content_length);
+
 						goto request_complete;
 					}
 					break;
@@ -709,17 +709,17 @@ static int __processs_req_payload(struct HttpConn* con, struct HttpReq *req, str
 			msg->content_received += pkt->tcp_payload_length;
 
 			DBG(5, "Post/Put received=%llu Content-length=%llu\n",
-				msg->content_received, msg->content_length);
-			
+				(long long)msg->content_received, (long long)msg->content_length);
+
 			if (msg->content_received >= msg->content_length) {
 				DBG(5, "POST/PUT request content finished\n");
-				
+
 				goto request_complete;
 			}
 			break;
 		case msg_state_complete:
 			ERROR("WTF completed request. invalid state! possible chunked request content length=%llu recieved=%llu\n",
-				  msg->content_length, msg->content_received);
+				  (long long) msg->content_length, (long long) msg->content_received);
 		default:
 			ERROR_FATAL("Invalid request state =%d \n", msg->state);
 			break;
@@ -727,7 +727,7 @@ static int __processs_req_payload(struct HttpConn* con, struct HttpReq *req, str
 
 	DBG(5, "return request id=%d state=%d method=%d\n", req->id, msg->state, req->method);
 	return 0;
-	
+
 	request_complete:
 
 	msg->state = msg_state_complete;
@@ -769,10 +769,11 @@ static int __processs_response_payload(struct HttpConn* con, struct HttpReq *req
 	unsigned char *line = NULL;
 	unsigned int str_len;
 	struct http_msg *msg;
-	
+
 	DBG(5, "process http response cur_response= %d\n", con->cur_response);
 	DBG(5, "http response id=%d content_received=%llu content_length=%llu\n",
-			req->id, req->server_resp_msg.content_received, req->server_resp_msg.content_length);
+			req->id, (long long)req->server_resp_msg.content_received,
+			(long long) req->server_resp_msg.content_length);
 
  	p = (unsigned char*) pkt->tcp_payload;
  	len = pkt->tcp_payload_length;
@@ -876,7 +877,7 @@ static int __processs_response_payload(struct HttpConn* con, struct HttpReq *req
 			two_eol_found:
 			if (ret == TWO_EOL) {
 				DBG(3, "CRLFCRLF response headers complete len=%d req_len=%llu recieved=%lld\n",
-					len, msg->content_length, msg->content_received);
+					len, (long long) msg->content_length, (long long) msg->content_received);
 
 				goto response_hdr_complete;
 			} else if (ret == ONE_EOL) {
@@ -947,7 +948,7 @@ static int __processs_response_payload(struct HttpConn* con, struct HttpReq *req
 	// NOTE not going to check verdict on:
 	// HTTP 204 No content timeout, the server may send this without a request
 	// HTTP 408 HTTP/1.0 408 Request Time-out 207.123.63.126 will do this
-	
+
 	if ((req->resp_status_code != 204)
 		&& (req->resp_status_code != 408) // timeout
 		&& (req->resp_status_code != 400) // bad request
@@ -955,7 +956,7 @@ static int __processs_response_payload(struct HttpConn* con, struct HttpReq *req
 		// check verdict
 		verdict = ContentFilter_getRequestVerdict(req->cf, req);
 		DBG(3, "verdict = 0x%x len=%d content_received=%lld\n",
-			verdict, len, msg->content_received);
+			verdict, len, (long long) msg->content_received);
 
 		switch (verdict) {
 			case Action_reject:
@@ -1004,12 +1005,12 @@ static int __processs_pkt_payload(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 // 			con->server_seq_num += pkt->tcp_payload_length;
 // 			DBG(5, "Change client ack to %d\n", ntohl(pkt->ack_num));
 // 			memcpy(&pkt->ip_data[pkt->ip_hdr_len+8],&pkt->ack_num, sizeof(int));
-// 
+//
 // 			Ipv4TcpPkt_resetTcpCon(pkt);
 // 		} else {
 			ret = __processs_req_payload(con, pkt);
 // 		}
-		
+
 	} else if (__pkt_from_server(pkt)) {
 // 		if (con->server_data_altered) {
 // 			// adjust client ACK number
@@ -1040,7 +1041,7 @@ static int __pkt_list_process(struct HttpConn* con, ipv4_tcp_pkt_list_t *pkt_lis
 		DBG(2, "Extracted saved packet from list count=%lu pkt=%p\n",
 			ubi_dlCount(pkt_list), next_pkt);
 		ret = HttpConn_processsPkt(con, next_pkt);
-		Ipv4TcpPkt_del(&next_pkt); // delete packet as we are done with it.		
+		Ipv4TcpPkt_del(&next_pkt); // delete packet as we are done with it.
 	}
 
 	return ret;
@@ -1062,7 +1063,8 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 		req =__add_request_new_to_list(con);
 	} else {
 		DBG(5, "http response id=%d content_received=%llu content_length=%llu\n",
-			req->id, req->server_resp_msg.content_received, req->server_resp_msg.content_length);
+			req->id, (long long) req->server_resp_msg.content_received,
+			(long long) req->server_resp_msg.content_length);
 	}
 
 	// if no connection associated with this packet
@@ -1106,9 +1108,9 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 		delta = (int) (pkt->seq_num - con->server_seq_num);
 		DBG(4, "Pkt from server  server_seq_num=%u  pkt_seq_num=%u delta=%d\n",
 			con->server_seq_num, pkt->seq_num, delta);
-		
+
 		if (pkt->tcp_payload_length) {
-			
+
 			if (unlikely(con->server_data_altered)) {
 				DBG(5, "Drop packet from server on modified connection \n");
 				Ipv4TcpPkt_setNlVerictDrop(pkt);
@@ -1131,7 +1133,7 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 				}
 
 				return -EBUSY;
-				
+
 			} else {
 				con->server_seq_num = pkt->seq_num + pkt->tcp_payload_length;
 				con->server_ack_num = pkt->ack_num;
@@ -1141,10 +1143,10 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 
 			}
 		}
-	
+
 		DBG(5, "Pkt from server  server_seq_num=%u  pkt_seq_num=%u delta=%d\n",
 		con->server_seq_num, pkt->seq_num, delta);
-	
+
 		// process any out of order packets that come after current pkt
 		__pkt_list_process(con, con->server_buffer);
 
@@ -1152,7 +1154,7 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 
 
 	} else {
-		// packet from client 
+		// packet from client
 		delta = (int) (pkt->seq_num - con->client_seq_num);
 		DBG(5, "Pkt from client  client_seq_num=%u  pkt_seq_num=%u delta=%d\n"
 		, con->client_seq_num, pkt->seq_num, delta);
@@ -1167,7 +1169,7 @@ int HttpConn_processsPkt(struct HttpConn* con, struct Ipv4TcpPkt *pkt)
 		}
 
 		if (pkt->tcp_payload_length) {
-		
+
 			//if packet already seen
 			if (delta < 0
 				&& (con->client_seq_num < TCP_SEQ_HI_WRAPZONE)) {

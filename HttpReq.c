@@ -118,7 +118,7 @@ static void save_msg_line(struct http_msg *msg, unsigned char *start, unsigned i
 
 
 /**
-* @brief process a line of the general header or request header, 
+* @brief process a line of the general header or request header,
 * @arg start_line  Pointer to start of line to process
 *      NOTE NOT null terminated, may contain multiple or partial lines.
 * @arg len   Length of buffer start_line
@@ -204,7 +204,7 @@ int HttpReq_processHeaderLine(struct HttpReq *req, bool client_req, unsigned cha
 		memcpy(value_str, p, str_len);
 		value_str[str_len] = 0; // NULL term
 		msg->content_length = strtoull(value_str, NULL, 0);
-		DBG(3, "Content-Length = %llu len=%d\n", msg->content_length, len);
+		DBG(3, "Content-Length = %llu len=%d\n", (long long) msg->content_length, len);
 		p = end;  // continue at end of number,  len is already updated.
 	} else if (!msg->content_length  // check if not set yet
 		&& (p = memmem(line, MIN(len, 19), "Transfer-Encoding: ", 19))) {
@@ -216,9 +216,9 @@ int HttpReq_processHeaderLine(struct HttpReq *req, bool client_req, unsigned cha
 		len -= 19;
 	// FIXME
 
-	
+
 		msg->chunked = true;
-	
+
 	} else {
 		p = line;  // continue to next line
 
@@ -269,7 +269,7 @@ int HttpReq_processHeaderLine(struct HttpReq *req, bool client_req, unsigned cha
 	} else if (count == 3) {
 		if (*p== '\n')  // strange case with IIS
 			return TWO_EOL;
-		else // Ends on \r  
+		else // Ends on \r
 			return ONE_EOL;
 	} else if (count > 0) {
 		return ONE_EOL;
@@ -287,14 +287,16 @@ static void __check_recvd_content(struct HttpReq *req)
 			req->server_resp_msg.state = msg_state_complete;
 		} else if (req->server_resp_msg.content_received > req->server_resp_msg.content_length) {
 			WARN("content over limit content_received=%llu content_length=%llu\n",
-				 req->server_resp_msg.content_received, req->server_resp_msg.content_length);
-				 
+				 (long long) req->server_resp_msg.content_received, (long long) req->server_resp_msg.content_length);
+
 				 req->con->cur_response++;
 				 req->server_resp_msg.state = msg_state_complete;
 		}
 	}
-	DBG(3, "content_received=%lld content_length=%lld\n", req->server_resp_msg.content_received, req->server_resp_msg.content_length);
-	
+	DBG(3, "content_received=%lld content_length=%lld\n",
+		(long long)req->server_resp_msg.content_received,
+		(long long)req->server_resp_msg.content_length);
+
 }
 #if 0
 /* uclibc 0.9.30 does not have fallocate() but the kernel does*/
@@ -358,7 +360,7 @@ int HttpReq_consumeResponseContent(struct HttpReq *req, const unsigned char *dat
 
 	req->server_resp_msg.content_received += len;
 	req->server_resp_msg.state = msg_state_read_content;
-	
+
 	__check_recvd_content(req);
 
 	if (req->server_resp_msg.state == msg_state_complete)
@@ -376,12 +378,12 @@ int HttpReq_consumeResponseContent(struct HttpReq *req, const unsigned char *dat
 			return -1;
 		}
 	}
-	
+
 	if (req->file_scan_fd) {
 		DBG(1, "File scanning enabled write %d bytes\n", len);
 		bytes_written = write(req->file_scan_fd, data, len);
 		if (bytes_written < len) {
-			ERROR(" Writing temp file written=%d\n", bytes_written);
+			ERROR(" Writing temp file written=%d\n", (int) bytes_written);
 		}
 		if (last_packet) {
 			DBG(1, "last packet scanning file\n");
@@ -397,7 +399,7 @@ int HttpReq_consumeResponseContent(struct HttpReq *req, const unsigned char *dat
 				__cleanup_tmpfile(req);
 			}
 		}
-		
+
 	}
 
 	return ContentFilter_filterStream(req->cf, req, data, len);
@@ -411,7 +413,7 @@ void HttpReq_setRuleMatched(struct HttpReq *req, struct Rule *r)
 	}
 
 	// get new reference
-	Rule_get(r); 
+	Rule_get(r);
 	req->rule_matched = r;
 
 	DBG(5, "Rule %d matched action=0x%x\n", r->rule_id, r->action);
