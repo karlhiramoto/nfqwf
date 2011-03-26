@@ -71,7 +71,7 @@ struct NfQueue
 	struct nfnl_queue *nl_queue;
 
 	/** Linked list of connections we are tracking */
-	HttpConn_list_t *con_list;  
+	HttpConn_list_t *con_list;
 };
 
 
@@ -94,10 +94,10 @@ void NfQueue_get(struct NfQueue *nfq_wf) {
 
 /** Release reference counter */
 void NfQueue_put(struct NfQueue **nfq_wf) {
-	
+
 	DBG(4, "removing proxy reference to %p refcount = %d\n",
 		*nfq_wf, (*nfq_wf)->refcount);
-		
+
 	Object_put((struct Object**)nfq_wf);
 }
 
@@ -141,7 +141,7 @@ int NfQueue_destructor(struct Object *obj)
 	struct NfQueue *nfq_wf = (struct NfQueue *)obj;
 	struct HttpConn* con = NULL;
 	struct HttpConn* next_con = NULL;
-	
+
 	DBG(5, " destructor %p\n", nfq_wf);
 
 	if (nfq_wf->nl_queue)
@@ -182,7 +182,7 @@ static struct Object_ops obj_ops = {
 	.obj_size           = sizeof(struct NfQueue),
 	.obj_constructor    = NfQueue_constructor,
 	.obj_destructor     = NfQueue_destructor,
-	
+
 };
 
 /**
@@ -191,9 +191,9 @@ static struct Object_ops obj_ops = {
 static struct NfQueue* NfQueue_alloc(struct Object_ops *ops)
 {
 	struct NfQueue *nfq_wf;
-	
+
 	nfq_wf = (struct NfQueue*) Object_alloc(ops);
-	
+
 	return nfq_wf;
 }
 
@@ -213,13 +213,13 @@ static void __obj_input(struct nl_object *obj, void *arg)
 	struct nfnl_queue_msg *lost_msg = NULL;
 	uint8_t family;
 	uint16_t group;
-	
+
 	if (packet_id > next_packet_id) {
 		printf("Warning: %d Out of order packets.  Queue or socket overload \n", packet_id - next_packet_id);
 		group = nfnl_queue_msg_get_group(msg);
 		family = nfnl_queue_msg_get_family(msg);
 		lost_msg = nfnl_queue_msg_alloc();
-	
+
 		do {
 			nfnl_queue_msg_set_group(lost_msg, group);
 			nfnl_queue_msg_set_family(lost_msg, family);
@@ -230,7 +230,7 @@ static void __obj_input(struct nl_object *obj, void *arg)
 		} while (packet_id > next_packet_id);
 		nfnl_queue_msg_put(lost_msg);
 	}
-	
+
 	next_packet_id = packet_id + 1;
 
 // 	DBG(1, " starting nfq_wf=%p\n", nfq_wf);
@@ -286,7 +286,7 @@ static struct HttpConn* __httpConnList_expire(struct NfQueue* nfq_wf)
 			__httpConnList_rmCon(nfq_wf, con);
 		}
 	}
-	
+
 	return NULL;
 }
 static struct HttpConn* __find_tcp_conn(struct NfQueue* nfq_wf, struct Ipv4TcpPkt *pkt)
@@ -305,7 +305,7 @@ char dst_buf[INET_ADDRSTRLEN+2];
 	/*for each object in list */
 	for (con = (struct HttpConn *)ubi_dlFirst(nfq_wf->con_list);
 		con; con = (struct HttpConn *)ubi_dlNext(con)) {
-	
+
 		if (!memcmp(&con->tuple, &pkt->tuple, sizeof(struct Ipv4TcpTuple))) {
 			return con;
 		} else if (con->tuple.dst_ip == pkt->tuple.src_ip &&
@@ -318,7 +318,7 @@ char dst_buf[INET_ADDRSTRLEN+2];
 #if DEBUG_LEVEL > 1
 // 		inet_ntop(AF_INET, &con->tuple.src_ip, src_buf, sizeof(src_buf));
 // 		inet_ntop(AF_INET, &con->tuple.dst_ip, dst_buf, sizeof(dst_buf));
-		
+
 		DBG(5, "No match Con_ID=%u src_ip=0x%08X dst_ip=0x%08X sport=%u dport =%u \n"
 			" pkt_dst=0x%08X con_dst=0x%08X p_sport=%d c_sport=%d sstate=%d cstate=%d\n",
 			con->id,
@@ -402,7 +402,7 @@ static int __NfQueue_process_pkt(struct NfQueue* nfq_wf, struct Ipv4TcpPkt *pkt)
 			ERROR_FATAL("Skip sending queue verdict \n");
 		}
 	}
-	
+
 
 	return 0;
 }
@@ -452,12 +452,12 @@ static int __NfQueue_recv_pkt(struct NfQueue* nfq_wf)
 		.msg_controllen = 0,
 		.msg_flags = 0,
 	};
-	
+
 	continue_reading:
 
 	iov.iov_len = 2000;
 	pkt = Ipv4TcpPkt_new(iov.iov_len);
-	
+
 	// 	iov.iov_len = getpagesize();
 	iov.iov_base = buf = pkt->nl_buffer;
 
@@ -474,10 +474,10 @@ static int __NfQueue_recv_pkt(struct NfQueue* nfq_wf)
 	hdr = (struct nlmsghdr *) buf;
 	for(pkt_counter = 0; nlmsg_ok(hdr, n); pkt_counter++) {
 		DBG(3, "Processing valid message... hdr=%p buf=%p n=%d\n", hdr, buf, n);
-		
+
 		DBG(3, "nlmsg_len=%d nlmsg_type=%d nlmsg_flags=%d nlmsg_seq=%d nlmsg_pid=%d\n",
 			   hdr->nlmsg_len, hdr->nlmsg_type, hdr->nlmsg_flags, hdr->nlmsg_seq, hdr->nlmsg_pid);
-			   
+
 		if (hdr->nlmsg_type == NLMSG_DONE ||
 			   hdr->nlmsg_type == NLMSG_ERROR ||
 			   hdr->nlmsg_type == NLMSG_NOOP ||
@@ -486,7 +486,7 @@ static int __NfQueue_recv_pkt(struct NfQueue* nfq_wf)
 			   * users in the kernel are broken. */
 			DBG(3, "recvmsgs DONE|ERROR|NOPP|Overrun\n");
 		}
-			   
+
 		if (hdr->nlmsg_flags & NLM_F_MULTI) {
 				DBG(3, "recvmsgs Multipart received\n");
 				multipart = 1;
@@ -526,7 +526,7 @@ static int __NfQueue_recv_pkt(struct NfQueue* nfq_wf)
 				struct nlmsgerr *e = nlmsg_data(hdr);
 				DBG(3, "recvmsgs error\n");
 
-				if (hdr->nlmsg_len < nlmsg_msg_size(sizeof(*e))) {
+				if (hdr->nlmsg_len < (NLMSG_HDRLEN +sizeof(*e))) {
 					/* Truncated error message, the default action
 					* is to stop parsing. The user may overrule
 					* this action by returning NL_SKIP or
@@ -570,11 +570,11 @@ static int __NfQueue_recv_pkt(struct NfQueue* nfq_wf)
 		printf("Multiple messages processed %d\n", pkt_counter);
 		abort();
 	}
-	
+
 // 	if (buf)
 // 		free(buf);
 // 	buf = NULL;
-	
+
 	if (multipart) {
 		/* Multipart message not yet complete, continue reading */
 		goto continue_reading;
@@ -583,9 +583,9 @@ static int __NfQueue_recv_pkt(struct NfQueue* nfq_wf)
 	err = 0;
 	// 	out:
 // 	free(buf);
-	
+
 	return err;
-	
+
 
 }
 
@@ -601,13 +601,13 @@ static void* __NfQueue_main(void *arg)
 
 	DBG(5, " thread main startup %p q=%d\n", nfq_wf, nfq_wf->q_id);
 // 	nl_socket_modify_cb(nfq_wf->nf_sock, NL_CB_VALID, NL_CB_CUSTOM, __event_input, nfq_wf);
-	
-	
+
+
 	if ((err = nl_connect(nfq_wf->nf_sock, NETLINK_NETFILTER)) < 0) {
 		ERROR_FATAL("Unable to connect netlink socket: %d %s", err,
 					nl_geterror(err));
 	}
-	
+
 	nfnl_queue_pf_unbind(nfq_wf->nf_sock, AF_INET);
 	if ((err = nfnl_queue_pf_bind(nfq_wf->nf_sock, AF_INET)) < 0) {
 		ERROR_FATAL("Unable to bind logger: %d %s", err,
@@ -629,7 +629,7 @@ static void* __NfQueue_main(void *arg)
 
 	if (nfq_wf->exit_pipe[0] > fd)
 		max_fd = nfq_wf->exit_pipe[0];
-	
+
 	while (nfq_wf->keep_running) {
 		DBG(5, " running thread main loop %p q=%d\n", nfq_wf, nfq_wf->q_id);
 
@@ -691,7 +691,7 @@ struct NfQueue* NfQueue_new(int q_id, struct WfConfig *conf)
 	if (ret) {
 		DBG(1," Error opening pipe %d\n", ret);
 	}
-	
+
 	return nfq_wf;
 }
 
