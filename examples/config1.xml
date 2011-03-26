@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--Main 'WebFilter' tag contains config:
+Possible Attributes are:
+	tmp_dir - Location for tmp files currently only used by virus filter if enabled
+	non_http_action - what to do with traffic that is not following HTTP protocol,
+		in testing we've seen streaming media on port 80
+-->
+<WebFilter tmp_dir="/storage/tmp" non_http_action="accept">
+<!--FilterObjectsDef is a Group of 0 or many 'FiltersObject' -->
+  <FilterObjectsDef>
+<!--   'FilterObject'  A boolean (true/false) filter to match each HTTP request
+	REQUIRED Attributes are:
+		Filter_ID  - A unique ID for this filter
+		type -  type of filter
+-->
+    <FilterObject Filter_ID="1" type="filter/host" host="*petardas*"/>
+    <FilterObject Filter_ID="2" type="filter/url" url="*.sex.com*"/>
+    <FilterObject Filter_ID="3" type="filter/host" host="*facebook.com*"/>
+    <FilterObject Filter_ID="4" type="filter/host" host="*kernel.org"/>
+    <FilterObject Filter_ID="5" type="filter/ip" address="69.163.128.0" mask="255.255.128.0"/>
+    <FilterObject Filter_ID="6" type="filter/url" url="*.exe"/>
+    <FilterObject Filter_ID="7" type="filter/url" url="porn.jpg"/>
+    <FilterObject Filter_ID="1000" mon="1" tue="1" wed="1" thu="1" fri="1" sat="0" sun="0" from="06:00" to="18:00" type="filter/time" comment="Work hours"/>
+  </FilterObjectsDef>
+  <Rules>
+    <Rule Rule_ID="1" action="REJECT" log="1" comment="porn filter and log them">
+      <FilterObject Filter_ID="1" group="1"/>
+      <FilterObject Filter_ID="2" group="1"/>
+    </Rule>
+    <Rule Rule_ID="2" action="ACCEPT" log="0" comment="Allow work related sites">
+      <FilterObject Filter_ID="4" group="1"/>
+      <FilterObject Filter_ID="5" group="1"/>
+    </Rule>
+    <Rule Rule_ID="3" action="REJECT" log="0" comment="block facebook work hours">
+      <FilterObject Filter_ID="1000" group="1"/>
+      <FilterObject Filter_ID="3" group="2"/>
+    </Rule>
+    <Rule Rule_ID="4" action="REJECT" log="0" comment="block specific files">
+      <FilterObject Filter_ID="6" group="1"/>
+      <FilterObject Filter_ID="7" group="1"/>
+    </Rule>
+    <Rule Rule_ID="9999" action="ACCEPT" log="1" comment="Default rule"/>
+  </Rules>
+</WebFilter>

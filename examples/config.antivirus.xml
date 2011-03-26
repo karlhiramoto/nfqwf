@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebFilter tmp_dir="/storage/tmp" non_http_action="accept">
+  <FilterObjectsDef>
+<!--  Anti-virus filter
+ skip_size - if file is over skip_size bytes don't scan it
+ socket_path - location of clamd socket
+-->
+    <FilterObject Filter_ID="0" type="filter/clamav" skip_size="1048576" socket_path="/var/run/clamav/clamd.sock"/>
+    <FilterObject Filter_ID="2" type="filter/url" url="*.sex.com*"/>
+  </FilterObjectsDef>
+  <Rules>
+    <Rule Rule_ID="0" action="virus" log="1" comment="Anti-virus rule">
+      <FilterObject Filter_ID="0" group="0"/>
+    </Rule>
+    <Rule Rule_ID="1" action="REJECT" log="1" comment="">
+      <FilterObject Filter_ID="1" group="2"/>
+    </Rule>
+    <Rule Rule_ID="2" action="REJECT" log="0" comment="">
+      <FilterObject Filter_ID="2" group="2"/>
+    </Rule>
+    <Rule Rule_ID="9999" action="ACCEPT" log="1" comment="Default rule"/>
+  </Rules>
+</WebFilter>
