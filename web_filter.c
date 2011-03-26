@@ -127,7 +127,7 @@ static void sig_HUP_Handler(int sig)
 	if (!config_file) {
 		WARN("No config file arg specified to reload\n");
 		return;
-	}	
+	}
 	new_conf = WfConfig_new();
 	ret = WfConfig_loadConfig(new_conf, config_file);
 
@@ -188,7 +188,7 @@ static struct libnl_cache_ctx * init_libnl_cache(void)
 		ERROR_FATAL("Unable to connect netlink socket: %d %s\n",
 			err, nl_geterror(err));
 
-	rtnl_link_alloc_cache(cache_ctx->rt_sock, &cache_ctx->link_cache);
+	rtnl_link_alloc_cache(cache_ctx->rt_sock, AF_UNSPEC, &cache_ctx->link_cache);
 	nl_cache_mngt_provide(cache_ctx->link_cache);
 
 	return cache_ctx;
@@ -215,13 +215,13 @@ static int pidfile_chk(const char *pidfile) {
 	int lfd, tries, status;
 	FILE *pidf;
 	const int MAX_PIDFILE_LOCK_TRIES = 10;
-	
+
 	/* We set the lock options */
 	fl.l_type   = F_WRLCK;
 	fl.l_whence = SEEK_SET; // relative to bof
 	fl.l_start  = 0L; // from offset zero
 	fl.l_len    = 0L; // lock to eof
-	
+
 	/* We open pidfile for locking */
 	if((pidf = fopen(pidfile, "a+")) != NULL) {
 		lfd = fileno(pidf);
@@ -237,20 +237,20 @@ static int pidfile_chk(const char *pidfile) {
 			/* successful lock */
 			break;
 		}
-		
+
 		if (status == -1)
 			ERROR_FATAL("Cannot lock %s fd %d in %d tries: %s\n", pidfile, lfd,tries, strerror(errno));
-		
+
 		/* We truncate the pidfile */
 		if (ftruncate( lfd, (off_t) 0) < 0)
 			ERROR_FATAL("Error truncating pidfile, %s\n",strerror(errno));
-		
+
 		/* We write our pid in it */
 		fprintf(pidf, "%d\n", (int) getpid());
 		(void) fflush(pidf);
 	} else
 		ERROR_FATAL("Error while opening pidfile: %s\n",strerror(errno));
-	
+
 	return 0;
 }
 
@@ -275,12 +275,12 @@ static void print_help(void)
 }
 
 static int parse_opt (int argc, char *argv[])
-{	
+{
 	int option;
 	int ret;
 	bool high_q_set = false;
 	bool low_q_set = false;
-	
+
 	while ((option = getopt(argc, argv, "c:dhL:p:Q:q:v::")) != -1)
 	{
 		switch (option)
@@ -360,10 +360,10 @@ static int parse_opt (int argc, char *argv[])
 	}
 
 	return 0;
-	
+
 }
 
- 
+
 int main(int argc, char *argv[])
 {
 	int ret;
@@ -451,7 +451,7 @@ int main(int argc, char *argv[])
 
 		if (exit_pipe[0] > fd)
 			max_fd = exit_pipe[0];
-		
+
 		/* wait for an incoming message on the netlink socket */
 		ret = select(fd+1, &rfds, NULL, NULL, NULL);
 
@@ -460,7 +460,7 @@ int main(int argc, char *argv[])
 				DBG(1," exit pipe %d set\n", exit_pipe[1]);
 
 			}
-			
+
 			if (FD_ISSET(max_fd, &rfds)) {
 				DBG(1," rt_sock fd %d set\n", fd);
 				nl_recvmsgs_default(cache_ctx->rt_sock);

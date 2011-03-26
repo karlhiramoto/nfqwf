@@ -104,7 +104,7 @@ void Rule_get(struct Rule *r) {
 }
 
 void Rule_put(struct Rule **r) {
-	
+
 	DBG(5, "removing Rule reference to %p refcount = %d id=%d\n",
 		*r, (*r)->refcount, (*r)->rule_id);
 
@@ -116,7 +116,7 @@ int Rule_constructor(struct Object *obj)
 	int i;
 	struct Rule* r = (struct Rule*) obj;
 
-	DBG(5, "constructor rule size=%d rule=%p\n", sizeof(struct Rule), r);
+	DBG(5, "constructor rule size=%d rule=%p\n", (int) sizeof(struct Rule), r);
 
 	for (i = 0; i < MAX_FITER_GROUPS; i++) {
 		r->filter_groups[i] = FilterList_new();
@@ -144,7 +144,7 @@ static struct Object_ops obj_ops = {
 	.obj_size           = sizeof(struct Rule),
 	.obj_constructor    = Rule_constructor,
 	.obj_destructor     = Rule_destructor,
-	
+
 };
 
 static struct Rule* Rule_alloc(struct Object_ops *ops)
@@ -210,7 +210,7 @@ static int rule_filter_match_cb(struct Filter *fo, void *data)
 	if (!fo || !fo->fo_ops) {
 		ERROR_FATAL("No filter or no ops\n")
 	}
-	
+
 	if (!fo->fo_ops->foo_matches_req) {
 		return Action_nomatch;
 // 		ERROR_FATAL("missing filters match check callback Filter Name= '%s'\n", fo->fo_ops->ops->obj_type)
@@ -234,7 +234,7 @@ enum Action Rule_getVerdict(struct Rule *r,  struct HttpReq *req)
 			matches = FilterList_foreach(r->filter_groups[i],
 					req, rule_filter_match_cb);
 
-			// if matched nothing in this group, does not match 
+			// if matched nothing in this group, does not match
 			if (!matches)
 				return Action_nomatch;
 		}
