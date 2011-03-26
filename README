@@ -2,6 +2,9 @@ Dependencies:
 	libxml2 http://www.xmlsoft.org/
 	ubiqx for linked list http://ubiqx.org/modules.html
 	libnl 3.x  http://www.infradead.org/~tgr/libnl/
+	kernel config options:
+		CONFIG_NETFILTER_XT_TARGET_NFQUEUE
+		CONFIG_NETFILTER_NETLINK_QUEUE
 
 
 to compile:
