@@ -188,9 +188,17 @@ static struct libnl_cache_ctx * init_libnl_cache(void)
 		ERROR_FATAL("Unable to connect netlink socket: %d %s\n",
 			err, nl_geterror(err));
 
+
+#ifdef LIBNL_2_0_GIT_REV
+// OLD API
+	if ( (err = rtnl_link_alloc_cache(cache_ctx->rt_sock, &cache_ctx->link_cache)) < 0) {
+			ERROR_FATAL("Unable to allocate link cache %d %s\n", err, nl_geterror(err));
+	}
+#else
 	if ( (err = rtnl_link_alloc_cache(cache_ctx->rt_sock, AF_UNSPEC, &cache_ctx->link_cache)) < 0) {
 			ERROR_FATAL("Unable to allocate link cache %d %s\n", err, nl_geterror(err));
 	}
+#endif
 
 	nl_cache_mngt_provide(cache_ctx->link_cache);
 
