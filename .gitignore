@@ -5,7 +5,8 @@
 *.kde*
 *.log
 *.o
-*.sh
+install-sh
+ltmain.sh
 nfq-web-filter-config.h
 aclocal.m4
 autom4te.cache/
