@@ -10,7 +10,7 @@
 
 /**
 * @ingroup Object
-* @defgroup FilterType FilterType.  A lists of available filter types. 
+* @defgroup FilterType FilterType.  A lists of available filter types.
 * @{
 */
 
@@ -82,7 +82,7 @@ static void search_plugin(const char *name)
 	void *handle;
 	int i;
 
-	// for each library path specified 
+	// for each library path specified
 	for (i = 0; i < library_path_count; i++) {
 		snprintf(pathname, sizeof(pathname), "%s/%s.so", library_path_list[i], name);
 		handle = dlopen(pathname, RTLD_NOW | RTLD_LOCAL);
@@ -97,6 +97,7 @@ static void search_plugin(const char *name)
 			snprintf(pathname, sizeof(pathname), "%s%s.so", library_path_list[i], slash);
 			handle = dlopen(pathname, RTLD_NOW | RTLD_LOCAL);
 			if (handle) {
+				// found
 				return;
 			}
 			DBG(2, "Error opening %s  error='%s'\n", pathname, dlerror());
@@ -107,6 +108,8 @@ static void search_plugin(const char *name)
 	handle = dlopen(pathname, RTLD_NOW | RTLD_LOCAL);
 	if (!handle) {
 		DBG(2, "Error opening %s  error='%s'\n", pathname, dlerror());
+
+		ERROR("filter plugin '%s' could not be found in lib path\n", name);
 	}
 
 	return;
