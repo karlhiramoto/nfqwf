@@ -161,6 +161,7 @@ int HttpReq_processHeaderLine(struct HttpReq *req, bool client_req, unsigned cha
 	else
 		msg = &req->server_resp_msg;
 
+
 	if (!req->host && (p = memmem(line, MIN(len, 15), "Host: ", 6))) {
 		p = line+6; // skip past "Host: "
 		len -= 6;
@@ -194,7 +195,7 @@ int HttpReq_processHeaderLine(struct HttpReq *req, bool client_req, unsigned cha
 		DBG(3, "host = '%s' len=%d\n", req->host, len);
 		p = end;  // continue at end of Hostname,  len is already updated.
 	} else if (!msg->content_length  // check if not set yet
-			&& (p = memmem(line, MIN(len, 16), "Content-Length: ", 16))) {
+			&& line && (p = memmem(line, MIN(len, 16), "Content-Length: ", 16))) {
 
 		str_len = len;  // save as max possible length.
 		// with POST/PUT requests there will be content length data part of the POST/PUT
@@ -256,6 +257,8 @@ int HttpReq_processHeaderLine(struct HttpReq *req, bool client_req, unsigned cha
 				p++;
 				len--;
 			}
+
+			// if len remaining and not at end of line
 			if (!len && *p != '\n' && *p != '\r') {
 				// No end of line  save
 				DBG(1, "Partial request. save data\n");
