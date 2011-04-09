@@ -22,16 +22,31 @@ Possible Attributes are:
     <FilterObject Filter_ID="7" type="filter/url" url="porn.jpg"/>
     <FilterObject Filter_ID="1000" mon="1" tue="1" wed="1" thu="1" fri="1" sat="0" sun="0" from="06:00" to="18:00" type="filter/time" comment="Work hours"/>
   </FilterObjectsDef>
+
+<!--   'Rules'  container for 0 or more 'rule' tags -->
   <Rules>
+  <!--   'Rule'  A boolean (true/false) filter to match each HTTP request
+	REQUIRED Attributes are:
+		Rule_ID  - A unique ID for this rule
+		action -   what to do with matched request.   may be  ACCEPT|REJECT|DROP|virus
+	OPTIONAL Attributes are:
+		mark - if set, apply iptables mark to packet
+		mask - if set use mark/mask  on packet
+-->
     <Rule Rule_ID="1" action="REJECT" log="1" comment="porn filter and log them">
+<!-- Link to 'FilterObject' Above defined in 'FilterObjectsDef'
+ Objects in same 'group' are OR logic
+ Objects in different 'group' are AND logic-->
       <FilterObject Filter_ID="1" group="1"/>
       <FilterObject Filter_ID="2" group="1"/>
     </Rule>
-    <Rule Rule_ID="2" action="ACCEPT" log="0" comment="Allow work related sites">
+    <Rule Rule_ID="2" action="ACCEPT" log="0" mark="1" comment="Allow work related sites, and mark">
+<!--If Work related site with Filter_ID="4" OR Filter_ID="5" ACCEPT-->
       <FilterObject Filter_ID="4" group="1"/>
       <FilterObject Filter_ID="5" group="1"/>
     </Rule>
     <Rule Rule_ID="3" action="REJECT" log="0" comment="block facebook work hours">
+<!--If Facebook AND work hours  REJECT -->
       <FilterObject Filter_ID="1000" group="1"/>
       <FilterObject Filter_ID="3" group="2"/>
     </Rule>
@@ -39,6 +54,7 @@ Possible Attributes are:
       <FilterObject Filter_ID="6" group="1"/>
       <FilterObject Filter_ID="7" group="1"/>
     </Rule>
+<!--Last rule to catch all other unmatched requests and log them -->
     <Rule Rule_ID="9999" action="ACCEPT" log="1" comment="Default rule"/>
   </Rules>
 </WebFilter>
