@@ -3,3 +3,7 @@
 
    * google safe browsing
    * OpenDNS
+   * Load ballancer to mark packets for later redirection to server like:
+	$IPT -t nat -A PREROUTING -p tcp -i eth0 -m connmark --mark 1 -j DNAT --to-destination 10.1.1.1:80
+	$IPT -t nat -A POSTROUTING -p tcp -m connmark --mark 1 -j MASQUERADE
+   * Rate limiter keeping track of persistent connections
