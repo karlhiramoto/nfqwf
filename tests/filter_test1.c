@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 	cf = ContentFilter_new();
 
 	ret = ContentFilter_loadConfig(cf, "Xml file");
-	
+
 	ContentFilter_put(&cf);
 	return 0;
 }
