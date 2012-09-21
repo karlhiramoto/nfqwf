@@ -24,7 +24,7 @@ OBJECT_SOURCES = Object.c
 
 PLUGIN_SOURCES = ClamAvFilter.c HostFilter.c IpFilter.c TimeFilter.c UrlFilter.c
 FILTER_SOURCES = ContentFilter.c Filter.c \
-	 FilterList.c  FilterType.c Rules.c 
+	 FilterList.c  FilterType.c Rules.c
 
 bin_PROGRAMS = nfqwf
 
@@ -37,7 +37,7 @@ filter_test1_SOURCES = tests/filter_test1.c $(PLUGIN_SOURCES) $(FILTER_SOURCES) 
 	$(OBJECT_SOURCES) HttpConn.c HttpReq.c  Ipv4Tcp.c WfConfig.c PrivData.c
 filter_test1_CFLAGS = $(AM_CFLAGS) $(LIBNL_CFLAGS) $(XML2_INCLUDE)
 filter_test1_LDFLAGS = $(AM_LDFLAGS) $(XML2_LDFLAGS) $(LIBNL_LDFLAGS) \
-	-lubiqx 
+	-lubiqx
 endif
 
 
