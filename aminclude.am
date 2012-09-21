@@ -189,12 +189,12 @@ DX_CLEANFILES = \
 endif DX_COND_doc
 
 #     ----- end aminclude.am ---------------------------------------
-# 
+#
 # LICENSE
-# 
+#
 #   Copyright (c) 2009 Oren Ben-Kiki <oren@ben-kiki.org>
-# 
+#
 #   Copying and distribution of this file, with or without modification, are
 #   permitted in any medium without royalty provided the copyright notice
 #   and this notice are preserved.
-# 
+#
